@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Service Workers</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: #b91c1c;
+        }
+        .success {
+            color: #16a34a;
+            margin-top: 20px;
+        }
+        .info {
+            color: #0284c7;
+            margin-top: 10px;
+        }
+        pre {
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Service Workers</h1>
+        <p>This page will help you clear all service workers and caches from your browser.</p>
+        
+        <button onclick="clearEverything()">Clear All Service Workers & Caches</button>
+        
+        <div id="output"></div>
+    </div>
+
+    <script>
+        async function clearEverything() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p class="info">Clearing service workers and caches...</p>';
+            
+            let messages = [];
+
+            // 1. Unregister all service workers
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    messages.push(`Found ${registrations.length} service worker(s)`);
+                    
+                    for (const registration of registrations) {
+                        messages.push(`Unregistering: ${registration.scope}`);
+                        await registration.unregister();
+                    }
+                    messages.push('✅ All service workers unregistered');
+                } catch (error) {
+                    messages.push(`❌ Error unregistering service workers: ${error.message}`);
+                }
+            }
+
+            // 2. Clear all caches
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await caches.keys();
+                    messages.push(`Found ${cacheNames.length} cache(s)`);
+                    
+                    for (const cacheName of cacheNames) {
+                        messages.push(`Deleting cache: ${cacheName}`);
+                        await caches.delete(cacheName);
+                    }
+                    messages.push('✅ All caches cleared');
+                } catch (error) {
+                    messages.push(`❌ Error clearing caches: ${error.message}`);
+                }
+            }
+
+            // 3. Clear localStorage and sessionStorage
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                messages.push('✅ Local and session storage cleared');
+            } catch (error) {
+                messages.push(`❌ Error clearing storage: ${error.message}`);
+            }
+
+            // Display results
+            output.innerHTML = `
+                <div class="success">
+                    <h3>✅ Cleanup Complete!</h3>
+                    <pre>${messages.join('\n')}</pre>
+                    <p><strong>Next steps:</strong></p>
+                    <ol>
+                        <li>Close this tab</li>
+                        <li>Close ALL other tabs for this site</li>
+                        <li>Restart your browser (recommended)</li>
+                        <li>Visit the site again</li>
+                    </ol>
+                </div>
+            `;
+        }
+
+        // Auto-run on load
+        console.log('Service Worker Cleaner loaded');
+        console.log('Click the button to clear all service workers and caches');
+    </script>
+</body>
+</html>

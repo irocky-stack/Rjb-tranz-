@@ -1,0 +1,1228 @@
+
+@import 'tailwindcss';
+@import "tw-animate-css";
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+  }
+}
+
+:root {
+  /* Professional Blue & Orange Theme for RJB TRANZ CRM */
+  --background: oklch(98.4% 0.003 247.858);
+  --foreground: oklch(0.25 0.1 240);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.1 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.1 240);
+
+  --primary: oklch(54.6% 0.245 262.881);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(13% 0.028 261.692);
+  --secondary-foreground: oklch(1 0 0);
+  --accent: oklch(0.68 0.15 45);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+
+  --muted: oklch(0.95 0.005 240);
+  --muted-foreground: oklch(0.5 0.05 240);
+  --border: oklch(92.5% 0.084 155.995);
+  --input: oklch(0.9 0.01 240);
+  --ring: oklch(0.45 0.15 240);
+
+  --radius: 0.75rem;
+
+  /* Dynamic Font Size System */
+  --font-scale: 1; /* Base scale factor - can be adjusted dynamically */
+  --font-xs: calc(0.75rem * var(--font-scale));
+  --font-sm: calc(0.875rem * var(--font-scale));
+  --font-base: calc(1rem * var(--font-scale));
+  --font-lg: calc(1.125rem * var(--font-scale));
+  --font-xl: calc(1.25rem * var(--font-scale));
+  --font-2xl: calc(1.5rem * var(--font-scale));
+  --font-3xl: calc(1.875rem * var(--font-scale));
+  --font-4xl: calc(2.25rem * var(--font-scale));
+}
+
+/* Dark mode styles - matching the dark interface from the image */
+.dark {
+  --background: oklch(0.08 0.005 240);
+  --foreground: oklch(0.95 0.01 240);
+
+  --card: oklch(0.12 0.008 240);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.12 0.008 240);
+  --popover-foreground: oklch(0.95 0.01 240);
+
+  --primary: oklch(0.65 0.18 250);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.18 0.015 240);
+  --secondary-foreground: oklch(0.95 0.01 240);
+  --accent: oklch(0.65 0.18 250);
+  --accent-foreground: oklch(0.08 0.005 240);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+
+  --muted: oklch(0.16 0.008 240);
+  --muted-foreground: oklch(0.55 0.05 240);
+  --border: oklch(92.5% 0.084 155.995);
+  --input: oklch(0.16 0.008 240);
+  --ring: oklch(0.65 0.18 250);
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 3);
+  --radius-full: 9999px;
+
+  /* Dynamic font sizes mapped to Tailwind */
+  --font-size-xs: var(--font-xs);
+  --font-size-sm: var(--font-sm);
+  --font-size-base: var(--font-base);
+  --font-size-lg: var(--font-lg);
+  --font-size-xl: var(--font-xl);
+  --font-size-2xl: var(--font-2xl);
+  --font-size-3xl: var(--font-3xl);
+  --font-size-4xl: var(--font-4xl);
+}
+
+/* Dynamic font size classes */
+.font-dynamic-xs { font-size: var(--font-xs) !important; }
+.font-dynamic-sm { font-size: var(--font-sm) !important; }
+.font-dynamic-base { font-size: var(--font-base) !important; }
+.font-dynamic-lg { font-size: var(--font-lg) !important; }
+.font-dynamic-xl { font-size: var(--font-xl) !important; }
+.font-dynamic-2xl { font-size: var(--font-2xl) !important; }
+.font-dynamic-3xl { font-size: var(--font-3xl) !important; }
+.font-dynamic-4xl { font-size: var(--font-4xl) !important; }
+
+/* Font scale presets */
+.font-scale-tiny { --font-scale: 0.8; }
+.font-scale-small { --font-scale: 0.9; }
+.font-scale-normal { --font-scale: 1; }
+.font-scale-large { --font-scale: 1.1; }
+.font-scale-huge { --font-scale: 1.2; }
+
+/* Apply dynamic font sizes to common elements */
+body {
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--font-base);
+}
+
+h1 { font-size: var(--font-3xl); }
+h2 { font-size: var(--font-2xl); }
+h3 { font-size: var(--font-xl); }
+h4 { font-size: var(--font-lg); }
+h5 { font-size: var(--font-base); }
+h6 { font-size: var(--font-sm); }
+
+p { font-size: var(--font-base); }
+small { font-size: var(--font-sm); }
+
+/* Button font sizes */
+button {
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+/* Input font sizes */
+input, select, textarea {
+  font-size: var(--font-base);
+}
+
+/* Mobile-specific dynamic font scaling */
+@media (max-width: 640px) {
+  .mobile-font-scale {
+    --font-scale: 0.9; /* Slightly smaller on mobile by default */
+  }
+
+  /* Ensure minimum readable sizes on mobile */
+  input, select, textarea {
+    font-size: max(var(--font-base), 16px) !important; /* Prevent zoom on iOS */
+  }
+}
+
+/* Responsive font scaling based on viewport */
+@media (max-width: 480px) {
+  :root {
+    --font-scale: 0.85; /* Smaller fonts on very small screens */
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --font-scale: 1.05; /* Slightly larger fonts on large screens */
+  }
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --font-scale: 1.1; /* Larger fonts on very large screens */
+  }
+}
+.gradient-card-1, .gradient-card-2, .gradient-card-3, .gradient-card-4,
+.gradient-card-5, .gradient-card-6, .gradient-card-7, .gradient-card-8,
+.gradient-card-9, .gradient-card-10, .gradient-card-11, .gradient-card-12 {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+/* Gradient Card Hover Effects - +5px lift with floating shadows, 140% deeper gradients (70% increase) */
+.gradient-card-1:hover, .gradient-card-2:hover, .gradient-card-3:hover, .gradient-card-4:hover,
+.gradient-card-5:hover, .gradient-card-6:hover, .gradient-card-7:hover, .gradient-card-8:hover,
+.gradient-card-9:hover, .gradient-card-10:hover, .gradient-card-11:hover, .gradient-card-12:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow:
+    0 72px 144px rgba(0, 0, 0, 0.347),  /* 140% deeper (70% increase) */
+    0 48px 96px rgba(0, 0, 0, 0.231),   /* 140% deeper (70% increase) */
+    0 24px 48px rgba(0, 0, 0, 0.173),   /* 140% deeper (70% increase) */
+    0 12px 24px rgba(0, 0, 0, 0.116);   /* 140% deeper (70% increase) */
+}
+
+/* Dark shadow click effect for specific cards */
+.card-dark-shadow {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
+}
+
+.card-dark-shadow:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.10);
+}
+
+.card-dark-shadow:active {
+  transform: translateY(0px) scale(1.005);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s ease-out;
+}
+
+.dark .card-dark-shadow:hover {
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .card-dark-shadow:active {
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.6),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Enhanced card hover effects - Desktop & Mobile Compatible */
+.card-hover-enhanced {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+}
+
+.card-hover-enhanced:hover {
+  transform: translateY(-8px) scale(1.03) translateZ(0);
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.18),
+    0 20px 40px rgba(0, 0, 0, 0.12),
+    0 12px 24px rgba(0, 0, 0, 0.10),
+    0 8px 16px rgba(0, 0, 0, 0.08),
+    0 4px 8px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(var(--primary) / 0.1),
+    0 0 20px rgba(var(--primary) / 0.15);
+}
+
+.card-hover-enhanced:active {
+  transform: translateY(-5px) scale(1.015) translateZ(0);
+  transition: all 0.1s ease-out;
+}
+
+/* Minimal Card Hover */
+.card-hover-minimal {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.card-hover-minimal:hover {
+  transform: translateY(-2px);
+  background: var(--muted);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Professional loading animation - Faster */
+@keyframes pulse-professional {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.01);
+  }
+}
+
+.animate-pulse-professional {
+  animation: pulse-professional 1.2s ease-in-out infinite;
+}
+
+/* Gradient shift animation for progress bars */
+@keyframes gradient-shift {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Smooth fade-in animation - Faster */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* Support for animation delays */
+.animate-fade-in[style*="animation-delay"] {
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+/* Delayed fade-in animation for staggered effects - Faster */
+@keyframes fade-in-delayed {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-delayed {
+  animation: fade-in-delayed 0.4s ease-out forwards;
+}
+
+/* Scale animation for logo - Faster */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}
+
+/* Smooth fade-out animation - Faster */
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.animate-fade-out {
+  animation: fade-out 0.2s ease-in forwards;
+}
+
+/* Loading screen transition - Faster */
+@keyframes loading-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-loading-enter {
+  animation: loading-enter 0.3s ease-out forwards;
+}
+
+/* Typing cursor effect */
+@keyframes typing-cursor {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.typing-cursor::after {
+  content: '|';
+  animation: typing-cursor 1s infinite;
+  color: var(--primary);
+}
+
+/* Improved scrollbar styles */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Print-specific styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Animation delay support for entrance effects */
+.animate-card-entrance[style*="animation-delay"] {
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+/* Card hover and interaction effects - Enhanced Glassmorphism */
+.card-hover {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(var(--primary) / 0.08), transparent);
+  transition: left 0.3s ease-in-out;
+  z-index: 0;
+}
+
+.card-hover:hover::before {
+  left: 100%;
+}
+
+/* Enhanced hover effects - reduced shadows by 40%, +5px lift */
+.card-hover:hover {
+  transform: translateY(-5px) scale(1.015);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow:
+    0 47px 94px rgba(0, 0, 0, 0.22),
+    0 31px 62px rgba(0, 0, 0, 0.17),
+    0 23px 47px rgba(0, 0, 0, 0.15),
+    0 16px 31px rgba(0, 0, 0, 0.13),
+    0 10px 19px rgba(0, 0, 0, 0.11),
+    0 6px 12px rgba(0, 0, 0, 0.08),
+    0 3px 6px rgba(0, 0, 0, 0.07),
+    0 0 0 2px rgba(59, 130, 246, 0.3),
+    0 0 15px rgba(59, 130, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Dark mode glassmorphism card hover effects - matching the dark UI */
+.dark .card-hover:hover {
+  transform: translateY(-3px) scale(1.015);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 10px 20px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Dark mode card backgrounds */
+.dark .bg-card {
+  background: oklch(0.12 0.008 240);
+}
+
+/* Dark mode muted backgrounds */
+.dark .bg-muted {
+  background: oklch(0.16 0.008 240);
+}
+
+/* Dark mode input fields */
+.dark input,
+.dark select,
+.dark textarea {
+  background: oklch(0.16 0.008 240);
+  border-color: oklch(0.2 0.01 240);
+  color: oklch(0.95 0.01 240);
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: oklch(0.65 0.18 250);
+  box-shadow: 0 0 0 2px rgba(var(--primary) / 0.2);
+}
+
+/* Dark mode button styling */
+.dark .bg-primary {
+  background: oklch(0.65 0.18 250);
+}
+
+.dark .bg-secondary {
+  background: oklch(0.18 0.015 240);
+}
+
+/* Dark mode gradient cards should maintain their opacity in dark mode */
+.dark .gradient-card-1,
+.dark .gradient-card-2,
+.dark .gradient-card-3,
+.dark .gradient-card-4,
+.dark .gradient-card-5,
+.dark .gradient-card-6,
+.dark .gradient-card-7,
+.dark .gradient-card-8 {
+  background: oklch(0.12 0.008 240);
+  border: 1px solid oklch(0.2 0.01 240);
+}
+
+/* Dark mode enhanced card hover effects */
+.dark .card-hover-glass:hover {
+  transform: translateY(-3px) scale(1.015);
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.6),
+    0 15px 30px rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.card-hover:active {
+  transform: translateY(-4px) scale(1.025);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(255, 255, 255, 0.99) 100%);
+  box-shadow:
+    0 100px 200px rgba(0, 0, 0, 0.50),
+    0 60px 120px rgba(0, 0, 0, 0.40),
+    0 40px 80px rgba(0, 0, 0, 0.32),
+    0 25px 50px rgba(0, 0, 0, 0.28),
+    0 15px 30px rgba(0, 0, 0, 0.24),
+    0 8px 16px rgba(0, 0, 0, 0.20),
+    0 0 0 3px rgba(59, 130, 246, 0.6),
+    0 0 15px rgba(59, 130, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Dark mode text and visibility improvements */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: oklch(0.08 0.005 240);
+  color: oklch(0.95 0.01 240);
+}
+
+/* Dark mode scrollbar */
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: oklch(0.16 0.008 240);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.25 0.01 240);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.65 0.18 250);
+}
+
+/* Dark mode border styling */
+.dark .border {
+  border-color: oklch(0.2 0.01 240);
+}
+
+/* Dark mode dropdown/select styling */
+.dark select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Enhanced blurry modal overlay */
+.modal-backdrop {
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  background: rgba(0, 0, 0, 0.90);
+}
+
+/* Dark mode enhanced modal blur */
+.dark .modal-backdrop {
+  backdrop-filter: blur(32px) saturate(180%) brightness(0.7);
+  -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(0.7);
+  background: rgba(0, 0, 0, 0.95);
+}
+
+/* Hide carousel indicators on mobile */
+.carousel-indicators {
+  display: none !important;
+}
+
+.carousel-indicator {
+  display: none !important;
+}
+
+/* Enhanced base configuration */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+  }
+}
+
+/* Professional loading animation - Faster */
+@keyframes pulse-professional {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.01);
+  }
+}
+
+.animate-pulse-professional {
+  animation: pulse-professional 1.2s ease-in-out infinite;
+}
+
+/* Smooth fade-in animation - Faster */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* Scale animation for logo - Faster */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}
+
+/* Smooth fade-out animation - Faster */
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.animate-fade-out {
+  animation: fade-out 0.2s ease-in forwards;
+}
+
+/* Loading screen transition - Faster */
+@keyframes loading-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-loading-enter {
+  animation: loading-enter 0.3s ease-out forwards;
+}
+
+/* Typing cursor effect */
+@keyframes typing-cursor {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.typing-cursor::after {
+  content: '|';
+  animation: typing-cursor 1s infinite;
+  color: var(--primary);
+}
+
+/* Improved scrollbar styles */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Print-specific styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Animation delay support for entrance effects */
+.animate-card-entrance[style*="animation-delay"] {
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+/* Card hover and interaction effects - Enhanced Glassmorphism */
+.card-hover {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(var(--primary) / 0.08), transparent);
+  transition: left 0.3s ease-in-out;
+  z-index: 0;
+}
+
+.card-hover:hover::before {
+  left: 100%;
+}
+
+/* Enhanced hover effects - reduced shadows by 40%, +5px lift */
+.card-hover:hover {
+  transform: translateY(-5px) scale(1.015);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow:
+    0 47px 94px rgba(0, 0, 0, 0.22),
+    0 31px 62px rgba(0, 0, 0, 0.17),
+    0 23px 47px rgba(0, 0, 0, 0.15),
+    0 16px 31px rgba(0, 0, 0, 0.13),
+    0 10px 19px rgba(0, 0, 0, 0.11),
+    0 6px 12px rgba(0, 0, 0, 0.08),
+    0 3px 6px rgba(0, 0, 0, 0.07),
+    0 0 0 2px rgba(59, 130, 246, 0.3),
+    0 0 15px rgba(59, 130, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Dark mode glassmorphism card hover effects - matching the dark UI */
+.dark .card-hover:hover {
+  transform: translateY(-3px) scale(1.015);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 10px 20px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Dark mode card backgrounds */
+.dark .bg-card {
+  background: oklch(0.12 0.008 240);
+}
+
+/* Dark mode muted backgrounds */
+.dark .bg-muted {
+  background: oklch(0.16 0.008 240);
+}
+
+/* Dark mode input fields */
+.dark input,
+.dark select,
+.dark textarea {
+  background: oklch(0.16 0.008 240);
+  border-color: oklch(0.2 0.01 240);
+  color: oklch(0.95 0.01 240);
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: oklch(0.65 0.18 250);
+  box-shadow: 0 0 0 2px rgba(var(--primary) / 0.2);
+}
+
+/* Dark mode button styling */
+.dark .bg-primary {
+  background: oklch(0.65 0.18 250);
+}
+
+.dark .bg-secondary {
+  background: oklch(0.18 0.015 240);
+}
+
+/* Dark mode gradient cards should maintain their opacity in dark mode */
+.dark .gradient-card-1,
+.dark .gradient-card-2,
+.dark .gradient-card-3,
+.dark .gradient-card-4,
+.dark .gradient-card-5,
+.dark .gradient-card-6,
+.dark .gradient-card-7,
+.dark .gradient-card-8 {
+  background: oklch(0.12 0.008 240);
+  border: 1px solid oklch(0.2 0.01 240);
+}
+
+/* Dark mode enhanced card hover effects */
+.dark .card-hover-glass:hover {
+  transform: translateY(-3px) scale(1.015);
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.6),
+    0 15px 30px rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.card-hover:active {
+  transform: translateY(-4px) scale(1.025);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(255, 255, 255, 0.99) 100%);
+  box-shadow:
+    0 100px 200px rgba(0, 0, 0, 0.50),
+    0 60px 120px rgba(0, 0, 0, 0.40),
+    0 40px 80px rgba(0, 0, 0, 0.32),
+    0 25px 50px rgba(0, 0, 0, 0.28),
+    0 15px 30px rgba(0, 0, 0, 0.24),
+    0 8px 16px rgba(0, 0, 0, 0.20),
+    0 0 0 3px rgba(59, 130, 246, 0.6),
+    0 0 15px rgba(59, 130, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Dark mode text and visibility improvements */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: oklch(0.08 0.005 240);
+  color: oklch(0.95 0.01 240);
+}
+
+/* Dark mode scrollbar */
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: oklch(0.16 0.008 240);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.25 0.01 240);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.65 0.18 250);
+}
+
+/* Dark mode border styling */
+.dark .border {
+  border-color: oklch(0.2 0.01 240);
+}
+
+/* Dark mode dropdown/select styling */
+.dark select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Enhanced blurry modal overlay */
+.modal-backdrop {
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  background: rgba(0, 0, 0, 0.90);
+}
+
+/* Dark mode enhanced modal blur */
+.dark .modal-backdrop {
+  backdrop-filter: blur(32px) saturate(180%) brightness(0.7);
+  -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(0.7);
+  background: rgba(0, 0, 0, 0.95);
+}
+
+/* Hide carousel indicators on mobile */
+.carousel-indicators {
+  display: none !important;
+}
+
+.carousel-indicator {
+  display: none !important;
+}
+
+/* Enhanced mobile optimizations for PWA */
+@media (max-width: 640px) {
+  /* PWA safe area support */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Improve touch targets on mobile */
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Better text readability on small screens with font consistency */
+  body {
+    font-size: 16px; /* Prevents zoom on iOS */
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Ensure consistent font family throughout mobile interface */
+  * {
+    font-family: inherit !important;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  p, span, div, label {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    line-height: 1.5;
+  }
+
+  /* Better button typography on mobile */
+  button {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-weight: 500;
+  }
+
+  /* Input and select consistency */
+  input, select, textarea {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  /* Tab navigation font consistency */
+  [role="tab"], .tab-mobile {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-weight: 500;
+  }
+
+  /* Prevent horizontal scroll */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* PWA fullscreen support */
+  @media (display-mode: standalone) {
+    body {
+      padding-top: max(env(safe-area-inset-top), 20px);
+    }
+  }
+
+  /* Better button sizing on mobile */
+  .btn-mobile {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    min-height: 44px;
+  }
+
+  /* Improved card spacing */
+  .card-mobile {
+    margin-bottom: 1rem;
+    padding: 1rem;
+  }
+
+  /* Better modal positioning on mobile */
+  .modal-mobile {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+  }
+
+  /* Modal backdrop mobile optimization */
+  .modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  /* Modal content mobile optimization */
+  .modal-content {
+    width: 100%;
+    max-width: calc(100vw - 1rem);
+    margin: 0;
+  }
+
+  /* Country modal specific mobile optimizations */
+  .country-modal-mobile {
+    max-height: calc(100vh - 1rem);
+    margin: 0.5rem;
+  }
+
+  /* Time filter buttons mobile optimization */
+  .time-filter-mobile {
+    min-width: 60px;
+    height: 40px;
+    font-size: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  /* Transaction card mobile optimization */
+  .transaction-card-mobile {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .transaction-card-mobile .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  /* Avatar mobile optimization */
+  .avatar-mobile {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.75rem;
+  }
+
+  /* Badge mobile optimization */
+  .badge-mobile {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  /* Search input mobile optimization */
+  .search-mobile {
+    height: 48px;
+    font-size: 16px;
+    padding-left: 2.5rem;
+  }
+
+  /* Button group mobile optimization */
+  .button-group-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .button-group-mobile button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Modal header mobile optimization */
+  .modal-header-mobile {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Modal content mobile optimization */
+  .modal-content-mobile {
+    padding: 1rem;
+    max-height: calc(100vh - 8rem);
+    overflow-y: auto;
+  }
+
+  /* Country grid mobile optimization */
+  .country-grid-mobile {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0.75rem;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  /* Flag size mobile optimization */
+  .flag-mobile {
+    font-size: 1.5rem;
+  }
+
+  /* Currency pair mobile optimization */
+  .currency-pair-mobile {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+  }
+
+  /* Stats grid mobile optimization */
+  .stats-grid-mobile {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  /* Filter section mobile optimization */
+  .filter-section-mobile {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  /* Custom scrollbar for mobile */
+  .custom-scrollbar-mobile::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar-mobile::-webkit-scrollbar-track {
+    background: var(--muted);
+    border-radius: 2px;
+  }
+
+  .custom-scrollbar-mobile::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+}
+/* appended to close the @media (max-width: 640px) block from earlier edits */

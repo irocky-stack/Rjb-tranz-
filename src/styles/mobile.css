@@ -1,0 +1,54 @@
+/* Mobile-specific styles */
+.mobile-tab-container {
+  touch-action: pan-y;
+}
+
+.mobile-modal {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.mobile-card {
+  border-radius: 1rem;
+}
+
+.mobile-button {
+  min-height: 44px;
+}
+
+.mobile-input {
+  min-height: 44px;
+}
+
+.mobile-header {
+  font-size: 1.125rem;
+}
+
+.mobile-text {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .mobile-font-scale {
+    font-size: calc(1rem * var(--font-scale, 1));
+  }
+}
+/* Country modal mobile scaling and layout tweaks */
+@media (max-width: 640px) {
+  /* Reduce general components in country modal by 15% */
+  .country-modal-scale {
+    transform: scale(0.85);
+    transform-origin: top center;
+  }
+
+  /* Reduce only Send/Receive buttons by 5% */
+  .country-modal-actions-scale {
+    transform: scale(0.95);
+    transform-origin: top center;
+  }
+
+  /* Push the card grids lower on mobile */
+  .country-modal-grid-low {
+    margin-top: 1rem;
+  }
+}

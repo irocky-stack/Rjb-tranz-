@@ -1,0 +1,233 @@
+ <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#20A4F3" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="RJB TRANZ CRM" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="description" content="Professional money exchange and remittance CRM system" />
+    <meta name="keywords" content="money exchange, remittance, CRM, finance, business" />
+    <meta name="author" content="RJB TRANZ" />
+    
+    <!-- iOS PWA Support -->
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <link rel="apple-touch-icon" href="https://i.ibb.co/6LY7bxR/rjb-logo.jpg" />
+    <link rel="apple-touch-startup-image" href="https://i.ibb.co/6LY7bxR/rjb-logo.jpg" />
+    
+    <!-- Android PWA Support -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="RJB TRANZ" />
+    
+    <!-- Windows PWA Support -->
+    <meta name="msapplication-TileColor" content="#20A4F3" />
+    <meta name="msapplication-TileImage" content="https://i.ibb.co/6LY7bxR/rjb-logo.jpg" />
+    
+    <!-- PWA Manifest (conditionally loaded) -->
+    <link id="manifest-link" rel="manifest" href="./manifest.json" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="https://i.ibb.co/6LY7bxR/rjb-logo.jpg" />
+    <link rel="shortcut icon" type="image/jpeg" href="https://i.ibb.co/6LY7bxR/rjb-logo.jpg" />
+    
+    <title>RJB TRANZ - Admin CRM System</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+</head>
+
+<body>
+    <div id="root"></div>
+    
+    <!-- Main App Script -->
+    <script type="module" src="./src/main.tsx"></script>
+    
+    <!-- Service Worker Registration (disabled in dev, hardened guards) -->
+    <script type="module">
+        // Determine environment via Vite or hostname check
+        const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
+        const isGitHubDev = window.location.hostname.includes('github.dev') ||
+                           window.location.hostname.includes('app.github.dev') ||
+                           window.location.hostname.includes('csb.app') ||
+                           window.location.hostname.includes('codesandbox.io') ||
+                           window.location.hostname.includes('gitpod.io') ||
+                           window.location.hostname.includes('repl.it') ||
+                           window.location.hostname.includes('glitch.com') ||
+                           window.location.hostname.endsWith('.github.dev');
+
+        // Remove manifest link in GitHub Codespaces to avoid CORS issues
+        if (isGitHubDev) {
+            const manifestLink = document.getElementById('manifest-link');
+            if (manifestLink) {
+                manifestLink.remove();
+            }
+        }
+
+        // Register Service Worker for PWA functionality only in production, not in GitHub Codespaces, and not in file:// (Electron)
+        if (!isDev && !isGitHubDev && window.location.protocol !== 'file:' && 'serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+                    console.log('SW registered successfully:', registration.scope);
+
+                    // Handle service worker updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('New service worker available. Refresh to update.');
+                                    // Optional UX: show update prompt
+                                    // newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                    // location.reload();
+                                }
+                            });
+                        }
+                    });
+
+                    // Listen for messages from service worker
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data && event.data.type === 'SYNC_COMPLETE') {
+                            console.log('Background sync completed:', event.data.data);
+                        }
+                    });
+                } catch (error) {
+                    console.error('SW registration failed:', error);
+                }
+            });
+        } else if (isDev || isGitHubDev) {
+            console.log('SW registration skipped in development/GitHub Codespaces environment');
+
+            // In development (incl. Codespaces), actively unregister any existing SW IMMEDIATELY
+            if ('serviceWorker' in navigator) {
+                // Multiple aggressive unregistration strategies
+                const unregisterAll = async () => {
+                    try {
+                        // 1. Get all registrations
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        console.log('Found', regs.length, 'service worker(s) to unregister');
+
+                        // 2. Unregister each one
+                        for (const reg of regs) {
+                            console.log('Unregistering Service Worker:', reg.scope);
+                            try {
+                                const success = await reg.unregister();
+                                console.log('SW unregistered:', success, 'for scope:', reg.scope);
+                            } catch (e) {
+                                console.warn('Failed to unregister SW:', e);
+                            }
+                        }
+
+                        // 3. Clear any active controller
+                        if (navigator.serviceWorker.controller) {
+                            console.log('Active SW controller found - sending SKIP_WAITING');
+                            navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+                        }
+
+                        // 4. Force reload if we still have a controller after unregistration
+                        setTimeout(() => {
+                            if (navigator.serviceWorker.controller) {
+                                console.log('Service worker still active after unregistration, forcing page reload');
+                                window.location.reload();
+                            }
+                        }, 100);
+
+                    } catch (e) {
+                        console.warn('Error during SW unregister in dev:', e);
+                    }
+                };
+
+                // Run unregistration immediately
+                unregisterAll();
+
+                // Also run again after a short delay to catch any race conditions
+                setTimeout(unregisterAll, 500);
+                setTimeout(unregisterAll, 1000);
+            }
+        }
+
+        // Handle app installation prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('PWA install prompt available');
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+
+        // Handle successful installation
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed successfully');
+            deferredPrompt = null;
+        });
+
+        // Handle app updates - avoid reload loops in dev
+        window.addEventListener('controllerchange', () => {
+            console.log('Service worker controller changed');
+            if (!isDev && !isGitHubDev) {
+                console.log('Reloading to activate updated service worker');
+                window.location.reload();
+            }
+        });
+
+        // Handle offline/online status with safe guards
+        window.addEventListener('online', () => {
+            console.log('App is online');
+            // Trigger background sync if available (guard against undefined API)
+            if ('serviceWorker' in navigator && 'ServiceWorkerRegistration' in window) {
+                const hasSync = 'sync' in window.ServiceWorkerRegistration.prototype;
+                if (hasSync) {
+                    navigator.serviceWorker.ready
+                        .then((registration) => registration.sync.register('transaction-sync'))
+                        .catch((err) => console.log('Background sync registration failed:', err));
+                }
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('App is offline');
+        });
+
+        // Global PWA utilities
+        window.PWA = {
+            install: () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the install prompt');
+                        } else {
+                            console.log('User dismissed the install prompt');
+                        }
+                        deferredPrompt = null;
+                    });
+                }
+            },
+            isInstallable: () => !!deferredPrompt,
+            isStandalone: () =>
+                window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true
+        };
+
+        // Prevent zooming on iOS
+        document.addEventListener('gesturestart', function (e) {
+            e.preventDefault();
+        });
+
+        // Handle safe area insets for devices with notches
+        if (CSS.supports('padding: max(0px)')) {
+            document.documentElement.style.setProperty('--safe-area-inset-top', 'env(safe-area-inset-top)');
+            document.documentElement.style.setProperty('--safe-area-inset-bottom', 'env(safe-area-inset-bottom)');
+            document.documentElement.style.setProperty('--safe-area-inset-left', 'env(safe-area-inset-left)');
+            document.documentElement.style.setProperty('--safe-area-inset-right', 'env(safe-area-inset-right)');
+        }
+    </script>
+</body>
+
+</html>
