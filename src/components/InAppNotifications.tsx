@@ -1,15 +1,13 @@
- import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   CheckCircle, 
-  XCircle, 
-  Clock, 
-  CurrencyDollar, 
-  Printer, 
-  User, 
+  Clock,
+  CurrencyDollar,
+  Printer,
   X,
   Bell
 } from '@phosphor-icons/react';
@@ -41,7 +39,12 @@ interface InAppNotification {
   user: string;
   timestamp: string;
   read: boolean;
-  data?: any;
+  data?: {
+    amount?: number;
+    fromCurrency?: string;
+    toCurrency?: string;
+    userInitials?: string;
+  };
 }
 
 interface InAppNotificationsProps {
@@ -58,8 +61,8 @@ const SYSTEM_USERS = [
 ];
 
 const InAppNotifications: React.FC<InAppNotificationsProps> = ({ 
-  transactions, 
-  currentUser 
+  transactions: _transactions,
+  currentUser: _currentUser
 }) => {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);

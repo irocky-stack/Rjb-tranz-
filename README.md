@@ -28,8 +28,8 @@ A professional desktop application for currency exchange management, built with 
 
 1. **Clone and Install**
    ```bash
-   git clone <your-repo-url>
-   cd rjb-tranz-desktop
+   git clone https://github.com/irocky-stack/Rjb-tranz-.git
+   cd Rjb-tranz-
    npm install
    ```
 
@@ -45,7 +45,7 @@ A professional desktop application for currency exchange management, built with 
 
 ### For End Users
 
-Download the latest release from the [Releases page](https://github.com/your-username/rjb-tranz-desktop/releases):
+Download the latest release from the [Releases page](https://github.com/irocky-stack/Rjb-tranz-/releases):
 
 - **Windows**: Download `.exe` installer or portable version
 - **macOS**: Download `.dmg` file
@@ -198,7 +198,7 @@ Set up auto-updates by configuring GitHub releases:
 
 ### Getting Help
 
-1. Check the [Issues page](https://github.com/your-username/rjb-tranz-desktop/issues)
+1. Check the [Issues page](https://github.com/irocky-stack/Rjb-tranz-/issues)
 2. Review the [Setup Guide](DESKTOP_SETUP.md)
 3. Enable debug mode for detailed logs
 

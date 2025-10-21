@@ -3,6 +3,9 @@ const { autoUpdater } = require('electron-updater');
 const isDev = require('electron-is-dev');
 const path = require('path');
 const fs = require('fs');
+const unhandled = require('electron-unhandled');
+const Store = require('electron-store');
+const contextMenu = require('electron-context-menu');
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -405,4 +408,16 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
     // In production, use default behavior
     callback(false);
   }
+});
+
+// Initialize electron-unhandled
+unhandled();
+
+// Initialize electron-store
+const store = new Store();
+
+// Initialize context menu
+contextMenu({
+	showSaveImageAs: true,
+	showInspectElement: isDev,
 });

@@ -1,10 +1,18 @@
- import React, { useEffect, useState } from 'react';
-import { Bell, CheckCircle, AlertTriangle, XCircle, Clock, Settings } from 'lucide-react';
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { Bell, CheckCircle, AlertTriangle, XCircle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKV } from '@github/spark/hooks';
 
+interface Transaction {
+  id: string;
+  clientName?: string;
+  client_name?: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+}
+
 interface NotificationManagerProps {
-  transactions: any[];
+  transactions: Transaction[];
 }
 
 interface NotificationSettings {
@@ -17,7 +25,7 @@ interface NotificationSettings {
 export default function NotificationManager({ transactions }: NotificationManagerProps) {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
-  const [previousTransactions, setPreviousTransactions] = useState<any[]>([]);
+  const [previousTransactions, setPreviousTransactions] = useState<Transaction[]>([]);
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [notificationSettings, setNotificationSettings] = useKV<NotificationSettings>('notification-settings', {
@@ -103,9 +111,9 @@ export default function NotificationManager({ transactions }: NotificationManage
     }
     
     setPreviousTransactions(transactions);
-  }, [transactions, previousTransactions, notificationSettings]);
+  }, [transactions, previousTransactions, notificationSettings, showNotification]);
 
-  const requestPermission = async () => {
+  const requestPermission = useCallback(async () => {
     if (!isSupported) {
       toast.error('Push notifications are not supported in this browser');
       return;
@@ -120,7 +128,7 @@ export default function NotificationManager({ transactions }: NotificationManage
         
         // Show a test notification
         showNotification(
-          'RJB TRANZ Notifications',
+          '<strong className="font-bold">RJB TRANZ</strong> Notifications',
           'You will now receive transaction updates',
           'test'
         );
@@ -131,9 +139,9 @@ export default function NotificationManager({ transactions }: NotificationManage
       console.error('Error requesting notification permission:', error);
       toast.error('Failed to request notification permission');
     }
-  };
+  }, [isSupported, showNotification]);
 
-  const showNotification = (title: string, body: string, type: string, transaction?: any) => {
+  const showNotification = useCallback((title: string, body: string, type: string, transaction?: Transaction) => {
     if (permission !== 'granted') return;
 
     const baseOptions: NotificationOptions = {
@@ -192,7 +200,7 @@ export default function NotificationManager({ transactions }: NotificationManage
       // Fallback to toast notification
       toast.success(`${title}: ${body}`);
     }
-  };
+  }, [permission, swRegistration, notificationSettings?.soundEnabled]);
 
   const getNotificationStatus = () => {
     switch (permission) {

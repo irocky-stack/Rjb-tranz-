@@ -1,4 +1,4 @@
- import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useKV } from '@github/spark/hooks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,13 +9,10 @@ import {
   Upload,
   Camera,
   X,
-  Check,
   Image as ImageIcon,
   Trash,
-  ArrowCounterClockwise,
   Download,
-  User,
-  WarningCircle
+  User
 } from '@phosphor-icons/react';
 
 interface ProfilePictureUploadProps {
@@ -46,20 +43,19 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCountRef = useRef(0);
 
   // Image validation rules
-  const validation: ImageValidation = {
+  const validation: ImageValidation = useMemo(() => ({
     maxSize: 5 * 1024 * 1024, // 5MB
     allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
     minWidth: 100,
     minHeight: 100,
     maxWidth: 2048,
     maxHeight: 2048
-  };
+  }), []);
 
   // Size configurations
   const sizeConfig = {
@@ -90,22 +86,22 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
       const img = new Image();
       img.onload = () => {
         const { width, height } = img;
-        
+
         if (validation.minWidth && width < validation.minWidth) {
           reject(new Error(`Image too small. Minimum width: ${validation.minWidth}px`));
           return;
         }
-        
+
         if (validation.minHeight && height < validation.minHeight) {
           reject(new Error(`Image too small. Minimum height: ${validation.minHeight}px`));
           return;
         }
-        
+
         if (validation.maxWidth && width > validation.maxWidth) {
           reject(new Error(`Image too large. Maximum width: ${validation.maxWidth}px`));
           return;
         }
-        
+
         if (validation.maxHeight && height > validation.maxHeight) {
           reject(new Error(`Image too large. Maximum height: ${validation.maxHeight}px`));
           return;
@@ -133,7 +129,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
         // Calculate optimal dimensions (max 512x512 for profile pictures)
         const maxDimension = 512;
         let { width, height } = img;
-        
+
         if (width > height) {
           if (width > maxDimension) {
             height = (height * maxDimension) / width;
@@ -186,10 +182,10 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
         setTimeout(() => {
           setProfileImage(imageUrl);
           setUploadProgress(100);
-          
+
           // Notify parent component
           onImageChange?.(imageUrl);
-          
+
           toast.success('Profile picture updated successfully!', {
             description: 'Your new profile picture has been saved.',
             action: {
@@ -321,24 +317,21 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
 
       {/* Main upload area */}
       <div
-        className={`relative group transition-all duration-300 ${
-          isDragging ? 'scale-105 ring-2 ring-primary ring-offset-2' : ''
-        }`}
+        className={`relative group transition-all duration-300 ${isDragging ? 'scale-105 ring-2 ring-primary ring-offset-2' : ''
+          }`}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
         {/* Avatar display */}
-        <Avatar 
-          className={`${config.avatar} cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-2 hover:ring-primary/50 ${
-            isUploading ? 'opacity-75' : ''
-          } ${
-            isDragging ? 'ring-2 ring-primary scale-110' : ''
-          }`}
+        <Avatar
+          className={`${config.avatar} cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-2 hover:ring-primary/50 ${isUploading ? 'opacity-75' : ''
+            } ${isDragging ? 'ring-2 ring-primary scale-110' : ''
+            }`}
           onClick={openFilePicker}
         >
-          <AvatarImage 
+          <AvatarImage
             src={profileImage || undefined}
             alt={`${currentUser}'s profile picture`}
             className="object-cover"
@@ -447,7 +440,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               <div className="flex items-center justify-center mb-4">
                 <Avatar className="h-32 w-32">
                   <AvatarImage src={profileImage} alt="Profile preview" className="object-cover" />

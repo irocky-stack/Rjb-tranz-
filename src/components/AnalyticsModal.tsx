@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
  import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,13 +44,13 @@ interface AnalyticsModalProps {
   clients: Client[];
 }
 
-const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ 
-  type, 
-  title, 
-  onClose, 
-  transactions = [], 
-  clients = [] 
-}) => {
+const AnalyticsModal = ({
+  type,
+  title,
+  onClose,
+  transactions = [],
+  clients = []
+}: AnalyticsModalProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [analyticsData, setAnalyticsData] = useState<any>(null);
@@ -71,17 +73,17 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
         let data: any = {};
         
         switch (type) {
-          case 'revenue':
+          case 'revenue': {
             const completedTransactions = transactions.filter(t => t.status === 'completed');
             const totalRevenue = completedTransactions.reduce((sum, t) => sum + (t.fee || 0), 0);
             const recentRevenue = completedTransactions
               .filter(t => new Date(t.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
               .reduce((sum, t) => sum + (t.fee || 0), 0);
-            
+
             data = {
               totalRevenue: totalRevenue.toLocaleString(),
               recentRevenue: recentRevenue.toLocaleString(),
-              averagePerTransaction: completedTransactions.length > 0 
+              averagePerTransaction: completedTransactions.length > 0
                 ? (totalRevenue / completedTransactions.length).toFixed(2)
                 : '0',
               completedCount: completedTransactions.length,
@@ -89,27 +91,29 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
               growth: '+15.7%'
             };
             break;
-            
-          case 'volume':
+          }
+
+          case 'volume': {
             const totalVolume = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
             const todayVolume = transactions
               .filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString())
               .reduce((sum, t) => sum + (t.amount || 0), 0);
-            
+
             data = {
               totalVolume: totalVolume.toLocaleString(),
               todayVolume: todayVolume.toLocaleString(),
               transactionCount: transactions.length,
-              averageAmount: transactions.length > 0 
+              averageAmount: transactions.length > 0
                 ? (totalVolume / transactions.length).toFixed(2)
                 : '0',
               largestTransaction: Math.max(...transactions.map(t => t.amount || 0)).toLocaleString(),
               growth: '+12.3%'
             };
             break;
-            
-          case 'growth':
-            const thisMonth = transactions.filter(t => 
+          }
+
+          case 'growth': {
+            const thisMonth = transactions.filter(t =>
               new Date(t.createdAt).getMonth() === new Date().getMonth()
             ).length;
             const lastMonth = transactions.filter(t => {
@@ -118,9 +122,9 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
               lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
               return date.getMonth() === lastMonthDate.getMonth();
             }).length;
-            
+
             const monthlyGrowth = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth * 100).toFixed(1) : '0';
-            
+
             data = {
               monthlyGrowth: `${monthlyGrowth}%`,
               thisMonthTransactions: thisMonth,
@@ -130,57 +134,60 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
               trendDirection: parseFloat(monthlyGrowth) >= 0 ? 'up' : 'down'
             };
             break;
-            
-          case 'average':
+          }
+
+          case 'average': {
             const currencies = [...new Set(transactions.map(t => t.fromCurrency))];
             const currencyAverages = currencies.map(currency => {
               const currencyTxs = transactions.filter(t => t.fromCurrency === currency);
               const average = currencyTxs.reduce((sum, t) => sum + t.amount, 0) / currencyTxs.length;
               return { currency, average, count: currencyTxs.length };
             });
-            
+
             data = {
-              overallAverage: transactions.length > 0 
+              overallAverage: transactions.length > 0
                 ? (transactions.reduce((sum, t) => sum + t.amount, 0) / transactions.length).toFixed(2)
                 : '0',
               currencyBreakdown: currencyAverages,
-              highestAverage: currencyAverages.length > 0 
+              highestAverage: currencyAverages.length > 0
                 ? Math.max(...currencyAverages.map(c => c.average)).toFixed(2)
                 : '0',
-              lowestAverage: currencyAverages.length > 0 
+              lowestAverage: currencyAverages.length > 0
                 ? Math.min(...currencyAverages.map(c => c.average)).toFixed(2)
                 : '0'
             };
             break;
-            
-          case 'clients':
+          }
+
+          case 'clients': {
             const verifiedClients = clients.filter(c => c.verificationStatus === 'verified').length;
             const pendingClients = clients.filter(c => c.verificationStatus === 'pending').length;
-            const recentClients = clients.filter(c => 
+            const recentClients = clients.filter(c =>
               new Date(c.registrationDate) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
             ).length;
-            
+
             data = {
               totalClients: clients.length,
               verifiedClients,
               pendingClients,
               recentClients,
-              averageTransactions: clients.length > 0 
+              averageTransactions: clients.length > 0
                 ? (clients.reduce((sum, c) => sum + c.totalTransactions, 0) / clients.length).toFixed(1)
                 : '0',
-              topClient: clients.length > 0 
-                ? clients.reduce((prev, current) => 
+              topClient: clients.length > 0
+                ? clients.reduce((prev, current) =>
                     prev.totalVolume > current.totalVolume ? prev : current
                   ).name
                 : 'N/A'
             };
             break;
-            
-          case 'conversion':
+          }
+
+          case 'conversion': {
             const completedCount = transactions.filter(t => t.status === 'completed').length;
             const totalCount = transactions.length;
             const conversionRate = totalCount > 0 ? (completedCount / totalCount * 100).toFixed(1) : '0';
-            
+
             data = {
               conversionRate: `${conversionRate}%`,
               completedTransactions: completedCount,
@@ -190,7 +197,8 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
               successTrend: '+5.2%'
             };
             break;
-            
+          }
+
           default:
             data = { message: 'No data available' };
         }
@@ -205,13 +213,13 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
 
   const getIcon = () => {
     switch (type) {
-      case 'revenue': return <CurrencyDollar className="h-6 w-6" weight="duotone" />;
-      case 'volume': return <TrendUp className="h-6 w-6" weight="duotone" />;
-      case 'growth': return <TrendUp className="h-6 w-6" weight="duotone" />;
-      case 'average': return <CurrencyDollar className="h-6 w-6" weight="duotone" />;
-      case 'clients': return <Users className="h-6 w-6" weight="duotone" />;
-      case 'conversion': return <ArrowsClockwise className="h-6 w-6" weight="duotone" />;
-      default: return <CalendarBlank className="h-6 w-6" weight="duotone" />;
+      case 'revenue': return React.createElement(CurrencyDollar, { className: "h-6 w-6", weight: "duotone" });
+      case 'volume': return React.createElement(TrendUp, { className: "h-6 w-6", weight: "duotone" });
+      case 'growth': return React.createElement(TrendUp, { className: "h-6 w-6", weight: "duotone" });
+      case 'average': return React.createElement(CurrencyDollar, { className: "h-6 w-6", weight: "duotone" });
+      case 'clients': return React.createElement(Users, { className: "h-6 w-6", weight: "duotone" });
+      case 'conversion': return React.createElement(ArrowsClockwise, { className: "h-6 w-6", weight: "duotone" });
+      default: return React.createElement(CalendarBlank, { className: "h-6 w-6", weight: "duotone" });
     }
   };
 
@@ -229,313 +237,282 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
 
   const renderAnalyticsContent = () => {
     if (isLoading) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-3 text-muted-foreground">Loading analytics...</span>
-        </div>
+      return React.createElement('div', { className: 'flex items-center justify-center py-12' },
+        React.createElement('div', { className: 'animate-spin rounded-full h-8 w-8 border-b-2 border-primary' }),
+        React.createElement('span', { className: 'ml-3 text-muted-foreground' }, 'Loading analytics...')
       );
     }
 
     if (!analyticsData) {
-      return (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No data available</p>
-        </div>
+      return React.createElement('div', { className: 'text-center py-12' },
+        React.createElement('p', { className: 'text-muted-foreground' }, 'No data available')
       );
     }
 
     switch (type) {
       case 'revenue':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-2xl font-bold">${analyticsData.totalRevenue}</p>
-                  </div>
-                  <CurrencyDollar className="h-8 w-8 text-green-600" weight="duotone" />
-                </div>
-              </Card>
-              
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Last 30 Days</p>
-                    <p className="text-2xl font-bold">${analyticsData.recentRevenue}</p>
-                  </div>
-                  <div className="flex items-center text-green-600">
-                    <TrendUp className="h-5 w-5 mr-1" />
-                    <span className="text-sm font-medium">{analyticsData.growth}</span>
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg per Transaction</p>
-                    <p className="text-2xl font-bold">${analyticsData.averagePerTransaction}</p>
-                  </div>
-                  <Badge variant="secondary">{analyticsData.completedCount} completed</Badge>
-                </div>
-              </Card>
-            </div>
-            
-            <Card className="p-6">
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Revenue Insights
-              </h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Completed Transactions</span>
-                  <span className="font-medium">{analyticsData.completedCount}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Top Currency</span>
-                  <Badge variant="outline">{analyticsData.topCurrency}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Growth Rate</span>
-                  <span className="font-medium text-green-600">{analyticsData.growth}</span>
-                </div>
-              </div>
-            </Card>
-          </div>
+        return React.createElement('div', { className: 'space-y-6' },
+          React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Total Revenue'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, `$${analyticsData.totalRevenue}`)
+                ),
+                React.createElement(CurrencyDollar, { className: 'h-8 w-8 text-green-600', weight: 'duotone' })
+              )
+            ),
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Last 30 Days'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, `$${analyticsData.recentRevenue}`)
+                ),
+                React.createElement('div', { className: 'flex items-center text-green-600' },
+                  React.createElement(TrendUp, { className: 'h-5 w-5 mr-1' }),
+                  React.createElement('span', { className: 'text-sm font-medium' }, analyticsData.growth)
+                )
+              )
+            ),
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Avg per Transaction'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, `$${analyticsData.averagePerTransaction}`)
+                ),
+                React.createElement(Badge, { variant: 'secondary' }, `${analyticsData.completedCount} completed`)
+              )
+            )
+          ),
+          React.createElement(Card, { className: 'p-6' },
+            React.createElement('h4', { className: 'font-semibold mb-4 flex items-center gap-2' },
+              React.createElement(CheckCircle, { className: 'h-5 w-5 text-green-600' }),
+              'Revenue Insights'
+            ),
+            React.createElement('div', { className: 'space-y-3' },
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Completed Transactions'),
+                React.createElement('span', { className: 'font-medium' }, analyticsData.completedCount)
+              ),
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Top Currency'),
+                React.createElement(Badge, { variant: 'outline' }, analyticsData.topCurrency)
+              ),
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Growth Rate'),
+                React.createElement('span', { className: 'font-medium text-green-600' }, analyticsData.growth)
+              )
+            )
+          )
         );
-        
+
       case 'volume':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Volume</p>
-                    <p className="text-2xl font-bold">${analyticsData.totalVolume}</p>
-                  </div>
-                  <TrendUp className="h-8 w-8 text-blue-600" weight="duotone" />
-                </div>
-              </Card>
-              
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Today's Volume</p>
-                    <p className="text-2xl font-bold">${analyticsData.todayVolume}</p>
-                  </div>
-                  <div className="flex items-center text-green-600">
-                    <TrendUp className="h-5 w-5 mr-1" />
-                    <span className="text-sm font-medium">{analyticsData.growth}</span>
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Transactions</p>
-                    <p className="text-2xl font-bold">{analyticsData.transactionCount}</p>
-                  </div>
-                  <Badge variant="secondary">Total</Badge>
-                </div>
-              </Card>
-            </div>
-            
-            <Card className="p-6">
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <TrendUp className="h-5 w-5 text-blue-600" />
-                Volume Details
-              </h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Average Amount</span>
-                  <span className="font-medium">${analyticsData.averageAmount}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Largest Transaction</span>
-                  <span className="font-medium">${analyticsData.largestTransaction}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Volume Growth</span>
-                  <span className="font-medium text-green-600">{analyticsData.growth}</span>
-                </div>
-              </div>
-            </Card>
-          </div>
+        return React.createElement('div', { className: 'space-y-6' },
+          React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Total Volume'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, `$${analyticsData.totalVolume}`)
+                ),
+                React.createElement(TrendUp, { className: 'h-8 w-8 text-blue-600', weight: 'duotone' })
+              )
+            ),
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Today\'s Volume'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, `$${analyticsData.todayVolume}`)
+                ),
+                React.createElement('div', { className: 'flex items-center text-green-600' },
+                  React.createElement(TrendUp, { className: 'h-5 w-5 mr-1' }),
+                  React.createElement('span', { className: 'text-sm font-medium' }, analyticsData.growth)
+                )
+              )
+            ),
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Transactions'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, analyticsData.transactionCount)
+                ),
+                React.createElement(Badge, { variant: 'secondary' }, 'Total')
+              )
+            )
+          ),
+          React.createElement(Card, { className: 'p-6' },
+            React.createElement('h4', { className: 'font-semibold mb-4 flex items-center gap-2' },
+              React.createElement(TrendUp, { className: 'h-5 w-5 text-blue-600' }),
+              'Volume Details'
+            ),
+            React.createElement('div', { className: 'space-y-3' },
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Average Amount'),
+                React.createElement('span', { className: 'font-medium' }, `$${analyticsData.averageAmount}`)
+              ),
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Largest Transaction'),
+                React.createElement('span', { className: 'font-medium' }, `$${analyticsData.largestTransaction}`)
+              ),
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Volume Growth'),
+                React.createElement('span', { className: 'font-medium text-green-600' }, analyticsData.growth)
+              )
+            )
+          )
         );
-        
+
       case 'clients':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Clients</p>
-                    <p className="text-2xl font-bold">{analyticsData.totalClients}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-blue-600" weight="duotone" />
-                </div>
-              </Card>
-              
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Verified</p>
-                    <p className="text-2xl font-bold">{analyticsData.verifiedClients}</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" weight="duotone" />
-                </div>
-              </Card>
-              
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pending</p>
-                    <p className="text-2xl font-bold">{analyticsData.pendingClients}</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-600" weight="duotone" />
-                </div>
-              </Card>
-              
-              <Card className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">New (30d)</p>
-                    <p className="text-2xl font-bold">{analyticsData.recentClients}</p>
-                  </div>
-                  <Badge variant="secondary">Recent</Badge>
-                </div>
-              </Card>
-            </div>
-            
-            <Card className="p-6">
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                Client Insights
-              </h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Average Transactions per Client</span>
-                  <span className="font-medium">{analyticsData.averageTransactions}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Top Client</span>
-                  <span className="font-medium">{analyticsData.topClient}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Verification Rate</span>
-                  <span className="font-medium text-green-600">
-                    {analyticsData.totalClients > 0 
-                      ? Math.round((analyticsData.verifiedClients / analyticsData.totalClients) * 100)
-                      : 0}%
-                  </span>
-                </div>
-              </div>
-            </Card>
-          </div>
+        return React.createElement('div', { className: 'space-y-6' },
+          React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4' },
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Total Clients'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, analyticsData.totalClients)
+                ),
+                React.createElement(Users, { className: 'h-8 w-8 text-blue-600', weight: 'duotone' })
+              )
+            ),
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Verified'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, analyticsData.verifiedClients)
+                ),
+                React.createElement(CheckCircle, { className: 'h-8 w-8 text-green-600', weight: 'duotone' })
+              )
+            ),
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'Pending'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, analyticsData.pendingClients)
+                ),
+                React.createElement(Clock, { className: 'h-8 w-8 text-yellow-600', weight: 'duotone' })
+              )
+            ),
+            React.createElement(Card, { className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground' }, 'New (30d)'),
+                  React.createElement('p', { className: 'text-2xl font-bold' }, analyticsData.recentClients)
+                ),
+                React.createElement(Badge, { variant: 'secondary' }, 'Recent')
+              )
+            )
+          ),
+          React.createElement(Card, { className: 'p-6' },
+            React.createElement('h4', { className: 'font-semibold mb-4 flex items-center gap-2' },
+              React.createElement(Users, { className: 'h-5 w-5 text-blue-600' }),
+              'Client Insights'
+            ),
+            React.createElement('div', { className: 'space-y-3' },
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Average Transactions per Client'),
+                React.createElement('span', { className: 'font-medium' }, analyticsData.averageTransactions)
+              ),
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Top Client'),
+                React.createElement('span', { className: 'font-medium' }, analyticsData.topClient)
+              ),
+              React.createElement('div', { className: 'flex justify-between items-center' },
+                React.createElement('span', { className: 'text-muted-foreground' }, 'Verification Rate'),
+                React.createElement('span', { className: 'font-medium text-green-600' },
+                  analyticsData.totalClients > 0
+                    ? `${Math.round((analyticsData.verifiedClients / analyticsData.totalClients) * 100)}%`
+                    : '0%'
+                )
+              )
+            )
+          )
         );
-        
+
       default:
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(analyticsData).map(([key, value]) => (
-              <Card key={key} className="p-4 card-dark-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </p>
-                    <p className="text-xl font-bold">{String(value)}</p>
-                  </div>
-                  {getIcon()}
-                </div>
-              </Card>
-            ))}
-          </div>
+        return React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+          Object.entries(analyticsData).map(([key, value]) =>
+            React.createElement(Card, { key, className: 'p-4 card-dark-shadow' },
+              React.createElement('div', { className: 'flex items-center justify-between' },
+                React.createElement('div', null,
+                  React.createElement('p', { className: 'text-sm text-muted-foreground capitalize' },
+                    key.replace(/([A-Z])/g, ' $1').trim()
+                  ),
+                  React.createElement('p', { className: 'text-xl font-bold' }, String(value))
+                ),
+                getIcon()
+              )
+            )
+          )
         );
     }
   };
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content max-w-6xl" onClick={(e) => e.stopPropagation()}>
-        <Card className="bg-card border-0 shadow-2xl">
-          <CardHeader className="pb-4 px-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-lg ${getIconColor()}`}>
-                  {getIcon()}
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-bold">{title} Analytics</CardTitle>
-                  <p className="text-muted-foreground text-sm">
-                    Detailed insights and performance metrics
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-10 w-10 p-0"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="px-6 pb-6">
-            {/* Timeframe Selection */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Timeframe:</span>
-                <div className="flex gap-2">
-                  {[
-                    { key: '7d', label: '7 Days' },
-                    { key: '30d', label: '30 Days' },
-                    { key: '90d', label: '90 Days' },
-                    { key: '1y', label: '1 Year' }
-                  ].map((option) => (
-                    <Button
-                      key={option.key}
-                      variant={timeframe === option.key ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setTimeframe(option.key as any)}
-                      className="h-8 px-3 text-xs"
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              
-              <Badge variant="secondary" className="font-mono text-xs">
-                Live Data
-              </Badge>
-            </div>
-
-            {/* Analytics Content */}
-            {renderAnalyticsContent()}
-
-            {/* Additional Insights */}
-            <div className="mt-6 p-4 bg-muted/20 rounded-lg">
-              <h4 className="font-semibold mb-2">Key Insights</h4>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Performance metrics are calculated from your actual transaction data</li>
-                <li>• Data is updated in real-time as new transactions are processed</li>
-                <li>• Use different timeframes to analyze trends and patterns</li>
-                <li>• All calculations are based on completed and verified transactions</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+  return React.createElement('div', { className: 'modal-backdrop', onClick: onClose },
+    React.createElement('div', { className: 'modal-content max-w-6xl', onClick: (e: any) => e.stopPropagation() },
+      React.createElement(Card, { className: 'bg-card border-0 shadow-2xl' },
+        React.createElement(CardHeader, { className: 'pb-4 px-6' },
+          React.createElement('div', { className: 'flex items-center justify-between' },
+            React.createElement('div', { className: 'flex items-center gap-3' },
+              React.createElement('div', { className: `p-3 rounded-lg ${getIconColor()}` },
+                getIcon()
+              ),
+              React.createElement('div', null,
+                React.createElement(CardTitle, { className: 'text-xl font-bold' }, `${title} Analytics`),
+                React.createElement('p', { className: 'text-muted-foreground text-sm' },
+                  'Detailed insights and performance metrics'
+                )
+              )
+            ),
+            React.createElement(Button, {
+              variant: 'ghost',
+              size: 'sm',
+              onClick: onClose,
+              className: 'h-10 w-10 p-0'
+            },
+              React.createElement(X, { className: 'h-5 w-5' })
+            )
+          )
+        ),
+        React.createElement(CardContent, { className: 'px-6 pb-6' },
+          React.createElement('div', { className: 'flex items-center justify-between mb-6' },
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('span', { className: 'text-sm font-medium text-muted-foreground' }, 'Timeframe:'),
+              React.createElement('div', { className: 'flex gap-2' },
+                [
+                  { key: '7d', label: '7 Days' },
+                  { key: '30d', label: '30 Days' },
+                  { key: '90d', label: '90 Days' },
+                  { key: '1y', label: '1 Year' }
+                ].map((option) =>
+                  React.createElement(Button, {
+                    key: option.key,
+                    variant: timeframe === option.key ? 'default' : 'outline',
+                    size: 'sm',
+                    onClick: () => setTimeframe(option.key as any),
+                    className: 'h-8 px-3 text-xs'
+                  },
+                    option.label
+                  )
+                )
+              )
+            ),
+            React.createElement(Badge, { variant: 'secondary', className: 'font-mono text-xs' },
+              'Live Data'
+            )
+          ),
+          renderAnalyticsContent(),
+          React.createElement('div', { className: 'mt-6 p-4 bg-muted/20 rounded-lg' },
+            React.createElement('h4', { className: 'font-semibold mb-2' }, 'Key Insights'),
+            React.createElement('ul', { className: 'text-sm space-y-1 text-muted-foreground' },
+              React.createElement('li', null, '• Performance metrics are calculated from your actual transaction data'),
+              React.createElement('li', null, '• Data is updated in real-time as new transactions are processed'),
+              React.createElement('li', null, '• Use different timeframes to analyze trends and patterns'),
+              React.createElement('li', null, '• All calculations are based on completed and verified transactions')
+            )
+          )
+        )
+      )
+    )
   );
 };
 

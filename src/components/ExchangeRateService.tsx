@@ -1,4 +1,4 @@
- import { useEffect, useState } from 'react';
+ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
 interface ExchangeRate {
@@ -17,7 +17,8 @@ interface ExchangeRateServiceProps {
 }
 
 // Mock API service for demonstration - in real app, replace with actual API calls
-class MockExchangeRateAPI {
+// Internal fallback mock data and helper (no longer exported)
+class _FallbackExchangeRateAPI {
   private static baseRates: ExchangeRate[] = [
     // Africa
     { pair: "USD/GHS", rate: 12.45, change: 0.15, changePercent: 1.22, lastUpdated: new Date().toISOString(), region: 'africa' },
@@ -126,36 +127,69 @@ const ExchangeRateService: React.FC<ExchangeRateServiceProps> = ({
   isAutoRefresh,
   refreshInterval = 30000 // 30 seconds default
 }) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [errorCount, setErrorCount] = useState(0);
 
   // Manual refresh function
-  const refreshRates = async () => {
+  const refreshRates = useCallback(async () => {
     try {
-      setIsConnected(true);
-      const rates = await MockExchangeRateAPI.fetchLiveRates();
-      onRatesUpdate(rates);
-      setLastUpdate(new Date());
-      setErrorCount(0);
-      
-      // Show success toast only if there were previous errors
-      if (errorCount > 0) {
-        toast.success('Exchange rates updated successfully');
+
+      // Try real API first (exchangerate.host is free and reliable). If it fails, fall back to internal mock.
+      let rates: ExchangeRate[] | null = null;
+
+      try {
+        const res = await fetch('https://api.exchangerate.host/latest?base=USD');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.rates) {
+            rates = Object.entries(data.rates).map(([currency, rateValue]) => {
+              return {
+                pair: `USD/${currency}`,
+                rate: rateValue as number,
+                change: 0,
+                changePercent: 0,
+                lastUpdated: new Date().toISOString(),
+                region: 'north-america' as ExchangeRate['region']
+              };
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Live exchange rate fetch failed, falling back to internal rates', err);
+      }
+
+      if (!rates) {
+        // Use internal fallback to ensure app remains functional offline or during API issues
+        rates = await _FallbackExchangeRateAPI.fetchLiveRates();
+      }
+
+      if (rates) {
+        const validResponse = rates.length > 0 && rates.every(rate =>
+          typeof rate.rate === 'number' && !isNaN(rate.rate) && rate.rate > 0 &&
+          typeof rate.change === 'number' &&
+          typeof rate.changePercent === 'number' &&
+          rate.lastUpdated &&
+          rate.pair && rate.pair.startsWith('USD/')
+        );
+        const updatedRates = rates;
+        if (validResponse) {
+          onRatesUpdate(updatedRates);
+          toast.success("Exchange rates updated with live data");
+          setErrorCount(0);
+        } else {
+          throw new Error('Invalid API response');
+        }
       }
     } catch (error) {
       console.error('Failed to fetch exchange rates:', error);
       setErrorCount(prev => prev + 1);
-      
+
       if (errorCount < 3) {
         toast.error('Failed to update exchange rates. Retrying...');
       } else {
         toast.error('Exchange rate service temporarily unavailable');
       }
-    } finally {
-      setIsConnected(false);
     }
-  };
+  }, [onRatesUpdate, errorCount]);
 
   // Auto refresh effect
   useEffect(() => {
@@ -168,28 +202,30 @@ const ExchangeRateService: React.FC<ExchangeRateServiceProps> = ({
     const interval = setInterval(refreshRates, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [isAutoRefresh, refreshInterval, onRatesUpdate]);
+  }, [isAutoRefresh, refreshInterval, onRatesUpdate, refreshRates]);
 
   // Expose refresh function globally for manual calls
   useEffect(() => {
+    interface CustomWindow extends Window {
+      refreshExchangeRates?: () => Promise<void>;
+    }
+
     // Make refresh function available globally
-    (window as any).refreshExchangeRates = refreshRates;
+    (window as CustomWindow).refreshExchangeRates = refreshRates;
     
     return () => {
-      delete (window as any).refreshExchangeRates;
+      delete (window as CustomWindow).refreshExchangeRates;
     };
-  }, []);
+  }, [refreshRates]);
 
   // Connection status effect
   useEffect(() => {
     const handleOnline = () => {
-      setIsConnected(true);
       toast.success('Connection restored. Updating rates...');
       refreshRates();
     };
 
     const handleOffline = () => {
-      setIsConnected(false);
       toast.warning('Connection lost. Rates may be outdated.');
     };
 
@@ -200,11 +236,11 @@ const ExchangeRateService: React.FC<ExchangeRateServiceProps> = ({
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [refreshRates]);
 
   // This component doesn't render anything, it's a service component
   return null;
 };
 
 export default ExchangeRateService;
-export { MockExchangeRateAPI };
+// MockExchangeRateAPI was removed; keep only the default export

@@ -29,7 +29,7 @@ const CACHEABLE_ASSETS = [
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker installing...');
-  
+
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
@@ -50,15 +50,15 @@ self.addEventListener('install', (event) => {
 // Activate event - cleanup old caches
 self.addEventListener('activate', (event) => {
   console.log('🚀 Service Worker activating...');
-  
+
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== STATIC_CACHE_NAME && 
-                cacheName !== DYNAMIC_CACHE_NAME && 
-                cacheName !== CACHE_NAME) {
+            if (cacheName !== STATIC_CACHE_NAME &&
+              cacheName !== DYNAMIC_CACHE_NAME &&
+              cacheName !== CACHE_NAME) {
               console.log('🗑️ Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
@@ -95,7 +95,7 @@ self.addEventListener('fetch', (event) => {
         // Return cached version if available
         if (cachedResponse) {
           console.log('📦 Serving from cache:', event.request.url);
-          
+
           // Update cache in background for next time
           fetch(event.request)
             .then((response) => {
@@ -110,7 +110,7 @@ self.addEventListener('fetch', (event) => {
             .catch(() => {
               // Network failed, cached version already served
             });
-          
+
           return cachedResponse;
         }
 
@@ -127,16 +127,16 @@ self.addEventListener('fetch', (event) => {
 
             // Cache responses for cacheable assets
             if (CACHEABLE_ASSETS.some(asset => url.includes(asset)) ||
-                url.includes('fonts.googleapis.com') ||
-                url.includes('fonts.gstatic.com') ||
-                url.endsWith('.js') ||
-                url.endsWith('.css') ||
-                url.endsWith('.png') ||
-                url.endsWith('.jpg') ||
-                url.endsWith('.jpeg') ||
-                url.endsWith('.svg') ||
-                url.endsWith('.ico')) {
-              
+              url.includes('fonts.googleapis.com') ||
+              url.includes('fonts.gstatic.com') ||
+              url.endsWith('.js') ||
+              url.endsWith('.css') ||
+              url.endsWith('.png') ||
+              url.endsWith('.jpg') ||
+              url.endsWith('.jpeg') ||
+              url.endsWith('.svg') ||
+              url.endsWith('.ico')) {
+
               caches.open(DYNAMIC_CACHE_NAME)
                 .then((cache) => {
                   console.log('💾 Caching asset:', url);
@@ -148,12 +148,12 @@ self.addEventListener('fetch', (event) => {
           })
           .catch((error) => {
             console.log('🔌 Network failed for:', event.request.url);
-            
+
             // Provide offline fallback for navigation requests
             if (event.request.mode === 'navigate') {
               return caches.match('/index.html');
             }
-            
+
             // For other requests, return a generic error response
             return new Response('Offline - Content not available', {
               status: 503,
@@ -170,7 +170,7 @@ self.addEventListener('fetch', (event) => {
 // Background sync event - sync data when online
 self.addEventListener('sync', (event) => {
   console.log('🔄 Background sync triggered:', event.tag);
-  
+
   if (event.tag === 'transaction-sync') {
     event.waitUntil(
       syncTransactionData()
@@ -185,7 +185,7 @@ self.addEventListener('sync', (event) => {
 // Push notification event
 self.addEventListener('push', (event) => {
   console.log('📢 Push notification received:', event);
-  
+
   let notificationData = {
     title: 'RJB TRANZ',
     body: 'You have a new notification',
@@ -215,11 +215,11 @@ self.addEventListener('push', (event) => {
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
   console.log('🔔 Notification clicked:', event);
-  
+
   event.notification.close();
-  
+
   const url = event.notification.data?.url || '/';
-  
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
@@ -229,7 +229,7 @@ self.addEventListener('notificationclick', (event) => {
             return client.focus();
           }
         }
-        
+
         // Otherwise, open new window
         if (clients.openWindow) {
           return clients.openWindow(url);
@@ -241,12 +241,12 @@ self.addEventListener('notificationclick', (event) => {
 // Message event - handle messages from main app
 self.addEventListener('message', (event) => {
   console.log('💬 Message received:', event.data);
-  
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
     return;
   }
-  
+
   if (event.data && event.data.type === 'CACHE_CLEAR') {
     event.waitUntil(
       caches.keys().then((cacheNames) => {
@@ -265,10 +265,10 @@ self.addEventListener('message', (event) => {
 async function syncTransactionData() {
   try {
     console.log('🔄 Syncing transaction data...');
-    
+
     // Get stored transaction data from IndexedDB or localStorage
     const storedData = await getStoredTransactions();
-    
+
     if (storedData && storedData.length > 0) {
       // Send to server
       const response = await fetch('/api/transactions/sync', {
@@ -278,11 +278,11 @@ async function syncTransactionData() {
         },
         body: JSON.stringify(storedData)
       });
-      
+
       if (response.ok) {
         console.log('✅ Transaction data synced successfully');
         await clearStoredTransactions();
-        
+
         // Notify main app of successful sync
         const clients = await self.clients.matchAll();
         clients.forEach(client => {
@@ -302,15 +302,15 @@ async function syncTransactionData() {
 async function syncExchangeRates() {
   try {
     console.log('🔄 Syncing exchange rates...');
-    
+
     const response = await fetch('/api/exchange-rates');
     if (response.ok) {
       const rates = await response.json();
-      
+
       // Store in cache for offline use
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
       await cache.put('/api/exchange-rates', new Response(JSON.stringify(rates)));
-      
+
       console.log('✅ Exchange rates synced successfully');
     }
   } catch (error) {
@@ -332,7 +332,7 @@ async function clearStoredTransactions() {
 // Periodic background sync (if supported)
 self.addEventListener('periodicsync', (event) => {
   console.log('⏰ Periodic sync triggered:', event.tag);
-  
+
   if (event.tag === 'exchange-rates-update') {
     event.waitUntil(syncExchangeRates());
   }

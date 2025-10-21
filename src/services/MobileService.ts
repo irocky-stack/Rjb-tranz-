@@ -1,21 +1,26 @@
-let deferredPrompt: any = null;
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
-window.addEventListener('beforeinstallprompt', (e) => {
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+
+window.addEventListener('beforeinstallprompt', (e: Event) => {
   e.preventDefault();
-  deferredPrompt = e;
+  deferredPrompt = e as BeforeInstallPromptEvent;
 });
 
 export const mobileService = {
   isInstallable: () => deferredPrompt !== null,
-  promptInstall: () => {},
+  promptInstall: () => { },
   isStandalone: () => {
     return window.matchMedia('(display-mode: standalone)').matches ||
-           (window.navigator as any).standalone === true;
+      (window.navigator as { standalone?: boolean }).standalone === true;
   },
-  isAppInstalled: function() {
+  isAppInstalled: function () {
     return this.isStandalone();
   },
-  checkForUpdates: () => {},
+  checkForUpdates: () => { },
   getInstallPrompt: () => deferredPrompt,
   showInstallPrompt: async () => {
     if (deferredPrompt) {
@@ -46,11 +51,13 @@ export const mobileService = {
       isChrome,
       isSafari,
       isMobile,
-      isStandalone: window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true
+      isStandalone: window.matchMedia('(display-mode: standalone)').matches || (window.navigator as { standalone?: boolean }).standalone === true
     };
   },
   getNetworkStatus: () => {
-    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    const connection = (navigator as { connection?: { effectiveType: string; downlink: number; rtt: number } }).connection ||
+      (navigator as { mozConnection?: { effectiveType: string; downlink: number; rtt: number } }).mozConnection ||
+      (navigator as { webkitConnection?: { effectiveType: string; downlink: number; rtt: number } }).webkitConnection;
     return {
       online: navigator.onLine,
       connection: connection ? {

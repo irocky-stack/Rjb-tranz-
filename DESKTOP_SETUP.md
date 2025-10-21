@@ -98,13 +98,13 @@ npm run dist-dir
    {
      "repository": {
        "type": "git",
-       "url": "https://github.com/YOUR_USERNAME/rjb-tranz-desktop.git"
+       "url": "https://github.com/irocky-stack/Rjb-tranz-.git"
      },
      "build": {
        "publish": {
          "provider": "github",
          "owner": "YOUR_USERNAME",
-         "repo": "rjb-tranz-desktop"
+         "repo": "Rjb-tranz-"
        }
      }
    }

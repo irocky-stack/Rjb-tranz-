@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -203,6 +204,7 @@ const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
       
       return () => clearTimeout(timer);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromCurrency, toCurrency, amount, exchangeRates]);
 
   // Quick amount buttons

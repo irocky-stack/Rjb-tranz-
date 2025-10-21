@@ -16,13 +16,19 @@ import {
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
+interface Transaction { [key: string]: unknown; }
+interface Client { [key:string]: unknown; }
+interface Invoice { [key: string]: unknown; }
+interface ExchangeRate { [key: string]: unknown; }
+interface SystemConfig { [key: string]: unknown; }
+
 interface DataMigrationProps {
   localData: {
-    transactions?: any[];
-    clients?: any[];
-    invoices?: any[];
-    exchangeRates?: any[];
-    systemConfig?: any;
+    transactions?: Transaction[];
+    clients?: Client[];
+    invoices?: Invoice[];
+    exchangeRates?: ExchangeRate[];
+    systemConfig?: SystemConfig;
   };
   onDataSynced?: () => void;
 }
@@ -50,7 +56,7 @@ const DataMigration: React.FC<DataMigrationProps> = ({ localData, onDataSynced }
     try {
       const isConnected = await SupabaseService.testConnection();
       setConnectionStatus(isConnected ? 'connected' : 'failed');
-    } catch (error) {
+    } catch {
       setConnectionStatus('failed');
     } finally {
       setIsConnecting(false);

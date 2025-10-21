@@ -1,4 +1,6 @@
- import React, { useState, useMemo, useRef, useEffect } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +76,7 @@ interface CountryModalProps {
   onSendMoney: (currency: string) => void;
   onReceiveMoney: (currency: string) => void;
   onTransactionCreated?: (transaction: Transaction) => void;
+  onTransactionUpdated?: (transaction: Transaction) => void;
 }
 
 interface TransactionFormData {
@@ -95,6 +98,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
   onSendMoney,
   onReceiveMoney,
   onTransactionCreated,
+  onTransactionUpdated,
 }) => {
   const [timeFilter, setTimeFilter] = useState("24h");
   const [searchTerm, setSearchTerm] = useState("");
@@ -127,6 +131,11 @@ const CountryModal: React.FC<CountryModalProps> = ({
     // Reset fee and D2D toggle when transaction type changes
     setCustomFee(null);
     setIsDollarToDollar(false);
+    // Update formData currency to use sender's currency for send transactions
+    setFormData(prev => ({
+      ...prev,
+      currency: transactionType === 'send' ? 'USD' : 'USD' // For receive, also use USD as receiver currency
+    }));
   }, [transactionType]);
 
   // Check if transaction is Dollar to Dollar
@@ -280,6 +289,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
       }
 
       toast.success(`Transaction saved as pending. Code: ${uniqueCode}`);
+      toast.info(`Status: Pending - Awaiting receiver information`);
       
       if (continueToNext) {
         // For send transactions, go to receiver info, for receive transactions, no change
@@ -407,8 +417,9 @@ const CountryModal: React.FC<CountryModalProps> = ({
 
   const calculateReceivingAmount = (transaction: Transaction): number => {
     const baseRate = getRateForPair(transaction.fromCurrency, transaction.toCurrency);
-    const effectiveRate = baseRate * 1.05; // add 5% markup
-    return transaction.amount * effectiveRate;
+    const effectiveRate = baseRate; // Use the direct rate
+    const amountToConvert = transaction.amount - transaction.fee; // Deduct fee before conversion
+    return amountToConvert * effectiveRate;
   };
 
   // Filter transactions by time, country, and status
@@ -737,12 +748,26 @@ const CountryModal: React.FC<CountryModalProps> = ({
               <div>
                 <span className="text-muted-foreground">Receiving Amount:</span>
                 <div className="font-mono text-green-600 font-bold">
-                  {calculateReceivingAmount(selectedTransaction).toLocaleString()} {selectedTransaction.toCurrency}
+                  {(() => {
+                    const fromCurrency = selectedTransaction.fromCurrency;
+                    const toCurrency = receiverInfo.currency || selectedTransaction.toCurrency;
+                    const baseRate = getRateForPair(fromCurrency, toCurrency);
+                    const effectiveRate = baseRate * 1.05;
+                    const amount = selectedTransaction.amount;
+                    return (amount * effectiveRate).toLocaleString();
+                  })()} {receiverInfo.currency || selectedTransaction.toCurrency}
                 </div>
               </div>
               <div>
                 <span className="text-muted-foreground">Exchange Rate:</span>
-                <div className="font-mono">{(getRateForPair(selectedTransaction.fromCurrency, selectedTransaction.toCurrency) * 1.05).toFixed(4)}</div>
+                <div className="font-mono">
+                  {(() => {
+                    const fromCurrency = selectedTransaction.fromCurrency;
+                    const toCurrency = receiverInfo.currency || selectedTransaction.toCurrency;
+                    const rate = getRateForPair(fromCurrency, toCurrency);
+                    return (rate).toFixed(4);
+                  })()}
+                </div>
               </div>
             </div>
           </div>
@@ -779,51 +804,47 @@ const CountryModal: React.FC<CountryModalProps> = ({
           />
         </div>
 
-        {/* Country - Dropdown for selection */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Country <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={receiverInfo.country}
-            onChange={(e) => {
-              const selectedCountry = e.target.value;
-              const selectedCountryInfo = countries.find(c => c.name === selectedCountry);
-              setReceiverInfo(prev => ({
-                ...prev,
-                country: selectedCountry,
-                currency: selectedCountryInfo?.currency || '' // Set currency based on selected country
-              }));
-            }}
-            className="h-12 px-3 border rounded-md bg-muted/50 w-full"
-          >
-            <option value="">Select a country</option>
-            {countries.map((countryInfo) => (
-              <option key={`country-${countryInfo.currency}`} value={countryInfo.name}>
-                {countryInfo.flag} {countryInfo.name} ({countryInfo.currency})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Currency - Auto-filled based on selected country */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Currency <span className="text-red-500">*</span>
-          </label>
-          <div className="h-12 px-3 border rounded-md bg-muted/50 flex items-center gap-3">
-            {receiverInfo.country ? (
-              <>
-                <span className="text-2xl">
-                  {countries.find(c => c.name === receiverInfo.country)?.flag}
-                </span>
-                <span className="font-medium">
-                  {countries.find(c => c.name === receiverInfo.country)?.currency}
-                </span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">Select a country first</span>
-            )}
+        {/* Country and Currency - Dropdown for selection */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Country <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={receiverInfo.country}
+              onChange={(e) => {
+                const selectedCountry = e.target.value;
+                const selectedCountryInfo = countries.find(c => c.name === selectedCountry);
+                setReceiverInfo(prev => ({
+                  ...prev,
+                  country: selectedCountry,
+                  currency: selectedCountryInfo?.currency || '' // Set currency based on selected country
+                }));
+              }}
+              className="h-12 px-3 border rounded-md bg-muted/50 w-full"
+            >
+              <option value="">Select a country</option>
+              {countries.map((countryInfo) => (
+                <option key={`country-${countryInfo.currency}`} value={countryInfo.name}>
+                  {countryInfo.flag} {countryInfo.name} ({countryInfo.currency})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Currency <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={receiverInfo.currency}
+              onChange={(e) => setReceiverInfo(prev => ({ ...prev, currency: e.target.value }))}
+              className="h-12 px-3 border rounded-md bg-muted/50 w-full"
+            >
+              <option value="">Select a currency</option>
+              {availableCurrencies.map((c) => (
+                <option key={`receiver-info-${c}`} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -869,7 +890,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
 
       const opt = {
         margin: [0.5, 0.5, 0.5, 0.5] as [number, number, number, number], // top, left, bottom, right in inches
-        filename: `RJB_TRANZ_Receipt_${selectedTransaction?.formatId || 'Unknown'}.pdf`,
+        filename: `RJB-TRANZ-Receipt_${selectedTransaction?.formatId || 'Unknown'}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: {
           scale: 2,
@@ -922,7 +943,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
         <!DOCTYPE html>
         <html>
           <head>
-            <title>RJB TRANZ Receipt</title>
+            <title><strong className="font-bold">RJB TRANZ</strong> Receipt</title>
             <style>
               ${styles}
               @media print {
@@ -976,8 +997,240 @@ const CountryModal: React.FC<CountryModalProps> = ({
             </p>
           </div>
         </div>
-        <div className="text-3xl animate-float">
-          {country.flag}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Show PDF preview for sender
+              const pdfModal = document.createElement('div');
+              pdfModal.innerHTML = `
+                <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                    <div class="flex items-center justify-between p-6 border-b">
+                      <h2 class="text-xl font-semibold">Sender Receipt Preview</h2>
+                      <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                      <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-2xl shadow-inner border border-gray-200" style="font-family: system-ui, -apple-system, sans-serif; min-height: 600px;">
+                        <!-- Header -->
+                        <div class="text-center mb-8">
+                          <div class="flex items-center justify-center gap-3 mb-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                              <span class="text-white text-xl font-bold">✓</span>
+                            </div>
+                            <div>
+                              <h1 class="text-2xl font-bold text-gray-800">RJB TRANZ</h1>
+                              <p class="text-sm text-gray-600">Professional Currency Exchange</p>
+                            </div>
+                          </div>
+                          <div class="w-full h-1 bg-gradient-to-r from-green-400 to-green-600 rounded-full"></div>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-6">
+                          <div class="text-center mb-8">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                              You just sent money to ${country.name} ${country.flag}
+                            </h2>
+                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                              <p class="text-blue-800 font-semibold">
+                                Exchange Rate: 1 ${selectedTransaction?.fromCurrency || 'USD'} = ${(() => {
+                                  const fromCurrency = selectedTransaction?.fromCurrency || 'USD';
+                                  const toCurrency = receiverInfo.currency || selectedTransaction?.toCurrency || country.currency;
+                                  const rate = getRateForPair(fromCurrency, toCurrency);
+                                  return (rate * 1.05).toFixed(4); // Adding 5% markup like in the original code
+                                })()} ${receiverInfo.currency || selectedTransaction?.toCurrency || country.currency}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div class="flex justify-center mb-8">
+                            <div class="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
+                              <div class="text-sm text-gray-600 mb-2">Amount Sent</div>
+                              <div class="text-2xl font-bold text-gray-800">
+                                $${selectedTransaction?.amount?.toFixed(2) || '0.00'} ${selectedTransaction?.fromCurrency || 'USD'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Receiving Amount -->
+                          <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-200 text-center mb-6">
+                            <div class="text-lg font-semibold text-gray-800 mb-2">Amount to Receive</div>
+                            <div class="text-3xl font-bold text-green-600">
+                              ${receiverInfo.currency || selectedTransaction?.toCurrency || country.currency} ${(() => {
+                                const fromCurrency = selectedTransaction?.fromCurrency || 'USD';
+                                const toCurrency = receiverInfo.currency || selectedTransaction?.toCurrency || country.currency;
+                                const baseRate = getRateForPair(fromCurrency, toCurrency);
+                                const effectiveRate = baseRate;
+                                const amount = (selectedTransaction?.amount || 0) - (selectedTransaction?.fee || 0);
+                                return (amount * effectiveRate).toFixed(2);
+                              })()}
+                            </div>
+                          </div>
+
+                          <!-- Sender Info -->
+                          <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200 mb-6">
+                            <div class="flex justify-between items-center">
+                              <span class="text-lg font-semibold text-gray-800">Sender:</span>
+                              <span class="text-xl font-bold text-blue-600">
+                                ${selectedTransaction?.clientName || 'N/A'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <!-- RJB Code -->
+                          <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-200 text-center">
+                            <div class="text-lg font-semibold text-gray-800 mb-2">Transaction Code</div>
+                            <div class="text-3xl font-bold text-green-600 font-mono">
+                              ${selectedTransaction?.uniqueCode || 'RJB00000000'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="text-center text-sm text-gray-500">
+                          <p>Thank you for choosing RJB TRANZ</p>
+                          <p class="mt-1">Generated on ${new Date().toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+              document.body.appendChild(pdfModal);
+            }}
+            className="h-10 w-10 p-0 hover:bg-blue-50 hover:border-blue-200 border border-blue-100 transition-all duration-300"
+            title="Preview Sender Receipt"
+          >
+            <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Show PDF preview for sender
+                const pdfModal = document.createElement('div');
+                pdfModal.innerHTML = `
+                  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                      <div class="flex items-center justify-between p-6 border-b">
+                        <h2 class="text-xl font-semibold">Sender Receipt Preview</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-2xl shadow-inner border border-gray-200" style="font-family: system-ui, -apple-system, sans-serif; min-height: 600px;">
+                          <!-- Header -->
+                          <div class="text-center mb-8">
+                            <div class="flex items-center justify-center gap-3 mb-4">
+                              <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                                <span class="text-white text-xl font-bold">✓</span>
+                              </div>
+                              <div>
+                                <h1 class="text-2xl font-bold text-gray-800">RJB TRANZ</h1>
+                                <p class="text-sm text-gray-600">Professional Currency Exchange</p>
+                              </div>
+                            </div>
+                            <div class="w-full h-1 bg-gradient-to-r from-green-400 to-green-600 rounded-full"></div>
+                          </div>
+ 
+                          <!-- Main Content -->
+                          <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-6">
+                            <div class="text-center mb-8">
+                              <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                                You just sent money to ${country.name} ${country.flag}
+                              </h2>
+                              <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                <p class="text-blue-800 font-semibold">
+                                  Exchange Rate: 1 ${selectedTransaction?.fromCurrency || 'USD'} = ${(() => {
+                                    const fromCurrency = selectedTransaction?.fromCurrency || 'USD';
+                                    const toCurrency = receiverInfo.currency || selectedTransaction?.toCurrency || country.currency;
+                                    const rate = getRateForPair(fromCurrency, toCurrency);
+                                    return (rate).toFixed(4);
+                                  })()} ${receiverInfo.currency || selectedTransaction?.toCurrency || country.currency}
+                                </p>
+                              </div>
+                            </div>
+ 
+                            <div class="flex justify-center mb-8">
+                              <div class="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
+                                <div class="text-sm text-gray-600 mb-2">Amount Sent</div>
+                                <div class="text-2xl font-bold text-gray-800">
+                                  $${selectedTransaction?.amount?.toFixed(2) || '0.00'} ${selectedTransaction?.fromCurrency || 'USD'}
+                                </div>
+                              </div>
+                            </div>
+ 
+                            <!-- Receiving Amount -->
+                            <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-200 text-center mb-6">
+                              <div class="text-lg font-semibold text-gray-800 mb-2">Amount to Receive</div>
+                              <div class="text-3xl font-bold text-green-600">
+                                ${receiverInfo.currency || selectedTransaction?.toCurrency || country.currency} ${(() => {
+                                  const fromCurrency = selectedTransaction?.fromCurrency || 'USD';
+                                  const toCurrency = receiverInfo.currency || selectedTransaction?.toCurrency || country.currency;
+                                  const baseRate = getRateForPair(fromCurrency, toCurrency);
+                                  const effectiveRate = baseRate;
+                                  const amount = (selectedTransaction?.amount || 0) - (selectedTransaction?.fee || 0);
+                                  return (amount * effectiveRate).toFixed(2);
+                                })()}
+                              </div>
+                            </div>
+ 
+                            <!-- Sender Info -->
+                            <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200 mb-6">
+                              <div class="flex justify-between items-center">
+                                <span class="text-lg font-semibold text-gray-800">Sender:</span>
+                                <span class="text-xl font-bold text-blue-600">
+                                  ${selectedTransaction?.clientName || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+ 
+                            <!-- RJB Code -->
+                            <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-200 text-center">
+                              <div class="text-lg font-semibold text-gray-800 mb-2">Transaction Code</div>
+                              <div class="text-3xl font-bold text-green-600 font-mono">
+                                ${selectedTransaction?.uniqueCode || 'RJB00000000'}
+                              </div>
+                            </div>
+                          </div>
+ 
+                          <!-- Footer -->
+                          <div class="text-center text-sm text-gray-500">
+                            <p>Thank you for choosing <strong className="font-bold">RJB TRANZ</strong></p>
+                            <p class="mt-1">Generated on ${new Date().toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+                document.body.appendChild(pdfModal);
+              }}
+              className="h-10 w-10 p-0 hover:bg-blue-50 hover:border-blue-200 border border-blue-100 transition-all duration-300"
+              title="Preview Sender Receipt"
+            >
+              <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+            </Button>
+            <div className="text-3xl animate-float">
+              {country.flag}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1003,7 +1256,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
                 />
                 <div>
                   <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent font-montserrat">
-                    RJB TRANZ
+                    <strong className="font-bold">RJB TRANZ</strong>
                   </h1>
                   <p className="text-orange-700 font-medium">Currency Exchange Management</p>
                 </div>
@@ -1116,7 +1369,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
                     <div className="flex justify-between">
                       <span className="text-amber-700">Amount to Receive:</span>
                       <span className="font-bold text-lg text-green-600">
-                        {(selectedTransaction.amount * (customExchangeRate !== null ? customExchangeRate : selectedTransaction.exchangeRate)).toLocaleString()} {selectedTransaction.toCurrency}
+                        {((selectedTransaction.amount - selectedTransaction.fee) * (customExchangeRate !== null ? customExchangeRate : selectedTransaction.exchangeRate)).toLocaleString()} {selectedTransaction.toCurrency}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -1137,7 +1390,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
               {/* Footer */}
               <div className="text-center border-t border-orange-300 pt-4">
                 <p className="text-sm text-orange-600 mb-2">
-                  Thank you for choosing RJB TRANZ for your currency exchange needs!
+                  Thank you for choosing <strong className="font-bold">RJB TRANZ</strong> for your currency exchange needs!
                 </p>
                 <p className="text-xs text-orange-500">
                   This receipt was generated on {new Date().toLocaleString()}
@@ -1190,11 +1443,16 @@ const CountryModal: React.FC<CountryModalProps> = ({
                     receiptPrinted: true
                   };
 
-                  if (onTransactionCreated) {
+                  // Update existing transaction status
+                  if (onTransactionUpdated) {
+                    onTransactionUpdated(updatedTransaction);
+                  } else if (onTransactionCreated) {
+                    // Fallback to onTransactionCreated if onTransactionUpdated is not provided
                     onTransactionCreated(updatedTransaction);
                   }
 
                   toast.success("Transaction completed successfully!");
+                  toast.info(`Status updated: Pending → Completed`);
                   onClose();
                 } catch (error) {
                   toast.error("Failed to complete transaction");
@@ -1308,22 +1566,21 @@ const CountryModal: React.FC<CountryModalProps> = ({
             />
           </div>
 
-          {/* Sender Currency */}
+          {/* Receiver Currency */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              Sender Currency <span className="text-red-500">*</span>
+              Receiver Currency <span className="text-red-500">*</span>
             </label>
             <select
-              value={senderCurrency}
-              onChange={(e) => setSenderCurrency(e.target.value)}
+              value={receiverCurrency}
+              onChange={(e) => setReceiverCurrency(e.target.value)}
               className="h-12 px-3 border rounded-md bg-muted/50 w-full"
             >
               {availableCurrencies.map((c) => (
-                <option key={`sender-${c}`} value={c}>{c}</option>
+                <option key={`receiver-${c}`} value={c}>{c}</option>
               ))}
             </select>
           </div>
-
         </div>
 
         {/* Phone Number - Optional */}
@@ -1351,7 +1608,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
               </div>
               <div>
                 <span className="text-muted-foreground">Exchange Rate:</span>
-                <div className="font-mono">{(getRateForPair(senderCurrency, receiverCurrency) * 1.05).toFixed(4)}</div>
+                <div className="font-mono">{(getRateForPair(senderCurrency, receiverCurrency)).toFixed(4)}</div>
               </div>
               <div>
                 <span className="text-muted-foreground">Amount:</span>

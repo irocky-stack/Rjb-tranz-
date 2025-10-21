@@ -107,59 +107,34 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
 
             {/* Main Content */}
             <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-6">
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
                   {isReceiver
                     ? `You just received money from ${transaction.countryName} ${transaction.countryFlag}`
                     : `You just sent money to ${transaction.countryName} ${transaction.countryFlag}`
                   }
                 </h2>
-                <p className="text-gray-600">
-                  Exchange Rate: 1 {transaction.fromCurrency} = {transaction.exchangeRate.toFixed(4)} {transaction.toCurrency}
-                </p>
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <p className="text-blue-800 font-semibold">
+                    Exchange Rate: 1 {transaction.fromCurrency} = {transaction.exchangeRate.toFixed(4)} {transaction.toCurrency}
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Transaction ID:</span>
-                    <span className="font-mono font-semibold text-gray-800">{transaction.uniqueId}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Reference:</span>
-                    <span className="font-mono text-sm text-gray-700">{transaction.formatId}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Customer:</span>
-                    <span className="font-semibold text-gray-800">{transaction.clientName}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Amount Sent:</span>
-                    <span className="font-semibold text-gray-800">
-                      ${transaction.amount.toFixed(2)} {transaction.fromCurrency}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Exchange Rate:</span>
-                    <span className="font-semibold text-gray-800">{transaction.exchangeRate.toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Fee:</span>
-                    <span className="font-semibold text-gray-800">${transaction.fee.toFixed(2)}</span>
+              <div className="flex justify-center mb-8">
+                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
+                  <div className="text-sm text-gray-600 mb-2">Amount Sent</div>
+                  <div className="text-2xl font-bold text-gray-800">
+                    ${transaction.amount.toFixed(2)} {transaction.fromCurrency}
                   </div>
                 </div>
               </div>
 
               {/* Total Received */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-gray-800">Total Received:</span>
-                  <span className="text-2xl font-bold text-green-600">
-                    {transaction.toCurrency} {totalReceived.toFixed(2)}
-                  </span>
+              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-200 text-center">
+                <div className="text-lg font-semibold text-gray-800 mb-2">Total Received</div>
+                <div className="text-3xl font-bold text-green-600">
+                  {transaction.toCurrency} {totalReceived.toFixed(2)}
                 </div>
               </div>
             </div>

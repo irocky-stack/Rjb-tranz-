@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,13 +10,10 @@ import {
   ArrowLeft, 
   ArrowRight, 
   User, 
-  Mail, 
-  DollarSign, 
-  Phone, 
-  MapPin,
+  Mail,
+  DollarSign,
   Calculator,
   Printer,
-  CheckCircle,
   AlertCircle,
   Globe,
   CreditCard,
@@ -27,12 +24,9 @@ import {
   Banknote,
   Building,
   Zap,
-  PiggyBank,
-  Circle,
   CheckCircle2,
   Edit3,
-  Save,
-  Dot
+  Save
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -100,6 +94,15 @@ interface InvoiceData {
   isRateEditable: boolean;
 }
 
+interface ExchangeRate {
+  pair: string;
+  rate: number;
+  change: number;
+  changePercent: number;
+  lastUpdated: string;
+  region: 'africa' | 'asia' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'middle-east';
+}
+
 interface CreateInvoiceProps {
   onBack: () => void;
   onComplete: (data: InvoiceData) => void;
@@ -108,7 +111,7 @@ interface CreateInvoiceProps {
     name: string;
     currency: string;
     pair: string;
-    rate: any;
+    rate: ExchangeRate;
   } | null;
 }
 
@@ -163,7 +166,7 @@ export default function CreateInvoice({ onBack, onComplete, selectedCountry }: C
     const rateKey = `${fromCurrency}-${toCurrency}`;
     const reverseRateKey = `${toCurrency}-${fromCurrency}`;
     
-    let rate = EXCHANGE_RATES[rateKey] || (1 / (EXCHANGE_RATES[reverseRateKey] || 1));
+    const rate = EXCHANGE_RATES[rateKey] || (1 / (EXCHANGE_RATES[reverseRateKey] || 1));
     
     // Apply 5% fee to the exchange rate (auto-deduct)
     const adjustedRate = rate * (1 - invoiceData.feeRate / 100);
@@ -182,7 +185,7 @@ export default function CreateInvoice({ onBack, onComplete, selectedCountry }: C
         totalFee: feeAmt
       }));
     }
-  }, [invoiceData.senderAmount, invoiceData.senderCurrency, invoiceData.receiverCurrency, invoiceData.feeRate]);
+  }, [invoiceData.senderAmount, invoiceData.senderCurrency, invoiceData.receiverCurrency, invoiceData.feeRate, setInvoiceData]);
 
   const updateField = (field: keyof InvoiceData, value: string | number | boolean) => {
     setInvoiceData(prev => ({ ...prev, [field]: value }));
@@ -241,7 +244,7 @@ export default function CreateInvoice({ onBack, onComplete, selectedCountry }: C
       
       toast.success('Invoice printed successfully!');
       onComplete(invoiceData);
-    } catch (error) {
+    } catch {
       toast.error('Printing failed');
     } finally {
       setIsProcessing(false);
@@ -433,8 +436,8 @@ export default function CreateInvoice({ onBack, onComplete, selectedCountry }: C
                   </label>
                   <div className="space-y-3">
                     {/* Dot Toggle Selector */}
-                    <div className="flex items-center justify-center space-x-2 mb-4">
-                      {PAYMENT_METHODS.map((method, index) => (
+              <div className="flex items-center justify-center space-x-2 mb-4" >
+                      {PAYMENT_METHODS.map((method) => (
                         <button
                           key={method.id}
                           type="button"
@@ -600,8 +603,8 @@ export default function CreateInvoice({ onBack, onComplete, selectedCountry }: C
                   </label>
                   <div className="space-y-3">
                     {/* Dot Toggle Selector */}
-                    <div className="flex items-center justify-center space-x-2 mb-4">
-                      {PAYMENT_METHODS.map((method, index) => (
+                    <div className="flex items-center justify-center space-x-2 mb-4" >
+                      {PAYMENT_METHODS.map((method) => (
                         <button
                           key={method.id}
                           type="button"
@@ -904,7 +907,7 @@ export default function CreateInvoice({ onBack, onComplete, selectedCountry }: C
                         alt="RJB TRANZ Logo" 
                         className="h-8 w-8 rounded-full"
                       />
-                      RJB TRANZ - Money Transfer Invoice Preview
+                      <strong className="font-bold">RJB TRANZ</strong> - Money Transfer Invoice Preview
                     </div>
                     <Badge className="bg-white text-blue-700">
                       #{new Date().getTime().toString().slice(-6)}
@@ -1050,7 +1053,7 @@ export default function CreateInvoice({ onBack, onComplete, selectedCountry }: C
                     {/* Timestamp */}
                     <div className="text-center text-xs text-gray-500 border-t pt-4">
                       <div className="font-semibold">Generated on {new Date().toLocaleString()}</div>
-                      <div className="mt-1">RJB TRANZ Professional Money Transfer Services</div>
+                      <div className="mt-1"><strong className="font-bold">RJB TRANZ</strong> Professional Money Transfer Services</div>
                       <div className="mt-1">This is a preview. Final receipt will be generated after payment confirmation.</div>
                     </div>
                   </div>

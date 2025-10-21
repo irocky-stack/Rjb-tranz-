@@ -29,6 +29,19 @@ interface PrintJob {
   createdAt: string;
 }
 
+interface Transaction {
+  id: string;
+  createdAt: string;
+  clientName: string;
+  clientEmail: string;
+  amount: number;
+  fromCurrency: string;
+  toCurrency: string;
+  exchangeRate: number;
+  fee: number;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+}
+
 interface PrinterStatus {
   connected: boolean;
   paperLevel: number;
@@ -76,9 +89,9 @@ const PrinterManager: React.FC = () => {
     const interval = setInterval(checkConnection, 30000); // Check every 30 seconds
     
     return () => clearInterval(interval);
-  }, []);
+  }, [setPrinterStatus]);
 
-  const generateESCPOSCommands = (transaction: any) => {
+  const generateESCPOSCommands = (transaction: Transaction) => {
     // ESC/POS command structure for thermal printer
     const ESC = '\x1B';
     const GS = '\x1D';
@@ -148,7 +161,7 @@ const PrinterManager: React.FC = () => {
       const testTransaction = {
         id: "TEST-" + Date.now(),
         clientName: "Test Customer",
-        clientEmail: "test@example.com",
+        clientEmail: "",
         amount: 100,
         fromCurrency: "USD",
         toCurrency: "GHS",
@@ -174,13 +187,13 @@ const PrinterManager: React.FC = () => {
       
       toast.success("Test receipt printed successfully");
       
-    } catch (error) {
-      toast.error("Test print failed");
-      console.error("Print error:", error);
+    } catch {
+      toast.error("Test print failed");      
     } finally {
       setIsTestPrinting(false);
     }
   };
+
 
   const processQueuedJobs = async () => {
     const pendingJobs = printQueue?.filter(job => job.status === 'pending') || [];
@@ -202,7 +215,7 @@ const PrinterManager: React.FC = () => {
         
         toast.success(`Receipt printed for ${job.clientName}`);
         
-      } catch (error) {
+      } catch {
         // Mark as failed
         setPrintQueue((prev) => prev?.map(j => 
           j.id === job.id ? { ...j, status: 'failed' } : j
@@ -211,21 +224,6 @@ const PrinterManager: React.FC = () => {
         toast.error(`Print failed for ${job.clientName}`);
       }
     }
-  };
-
-  const addToQueue = (transaction: any) => {
-    const printJob: PrintJob = {
-      id: `PRINT-${Date.now()}`,
-      transactionId: transaction.id,
-      clientName: transaction.clientName,
-      amount: transaction.amount,
-      currency: transaction.fromCurrency,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-    
-    setPrintQueue((prev) => [...(prev || []), printJob]);
-    toast.success("Added to print queue");
   };
 
   const getJobStatusIcon = (status: string) => {

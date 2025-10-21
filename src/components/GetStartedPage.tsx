@@ -1,16 +1,6 @@
  import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Buildings, 
-  TrendUp, 
-  FileText, 
-  Shield, 
-  ArrowRight,
-  Sparkle,
-  Globe,
-  CreditCard
-} from '@phosphor-icons/react';
+import { TrendUp, FileText, Shield, ArrowRight, Sparkle, Globe, CreditCard } from '@phosphor-icons/react';
 
 interface GetStartedPageProps {
   onGetStarted: () => void;
@@ -91,7 +81,7 @@ const GetStartedPage: React.FC<GetStartedPageProps> = ({ onGetStarted }) => {
 
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 font-montserrat tracking-tight animate-fade-in bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent"
                 style={{ animationDelay: '0.3s' }}>
-              RJB TRANZ
+              <strong className="font-bold">RJB TRANZ</strong>
             </h1>
             
             <p className="text-xl md:text-2xl text-white/90 mb-3 font-montserrat animate-fade-in font-light"
@@ -181,7 +171,7 @@ const GetStartedPage: React.FC<GetStartedPageProps> = ({ onGetStarted }) => {
         {/* Footer */}
         <div className="text-center py-8 animate-fade-in" style={{ animationDelay: '2.1s' }}>
           <p className="text-white/50 text-sm font-montserrat">
-            © 2024 RJB TRANZ. All rights reserved. | Professional Remittance Services
+            © 2024 <strong className="font-bold">RJB TRANZ</strong>. All rights reserved. | Professional Remittance Services
           </p>
         </div>
       </div>

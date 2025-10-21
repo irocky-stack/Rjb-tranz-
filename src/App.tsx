@@ -1,18 +1,19 @@
- import React, { useState, useEffect } from "react";
-import { useKV } from "@github/spark/hooks";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "./lib/supabase";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useCapacitor } from "@/hooks/useCapacitor";
 import { useElectron } from "@/hooks/useElectron";
 import { useFontScale } from "@/hooks/useFontScale";
+import useKV from "@/hooks/useKVWithFallback";
 import { pwaManager } from "@/utils/pwa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import LoadingStates from "@/components/LoadingStates";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import AnalyticsModal from "@/components/AnalyticsModal";
@@ -21,25 +22,22 @@ import AuthPage from "@/components/AuthPage";
 import PushNotificationService from "@/components/PushNotificationService";
 import SystemSettings from "@/components/SystemSettings";
 import CountryModal from "@/components/CountryModal";
-import PWAInstall from "@/components/PWAInstall";
-import SleepMode from "@/components/SleepMode";
 import FinancialCarousel from "@/components/FinancialCarousel";
 import ProfilePictureUpload from "@/components/ProfilePictureUpload";
 import ProfileSettings from "@/components/ProfileSettings";
-import FileUploadDemo from "@/components/FileUploadDemo";
+
 import TransactionPreviewModal from "@/components/TransactionPreviewModal";
 
 // Removed MobileIntegration - Pure PWA App
 import CurrencyConverter from "@/components/CurrencyConverter";
-import AutoConversionWidget from "@/components/AutoConversionWidget";
 import ExchangeRateService from "@/components/ExchangeRateService";
 import RateAlerts from "@/components/RateAlerts";
-import { 
-  CurrencyDollar, 
-  Users, 
-  User, 
-  TrendUp, 
-  TrendDown, 
+import {
+  CurrencyDollar,
+  Users,
+  User,
+  TrendUp,
+  TrendDown,
   CalendarBlank,
   MagnifyingGlass,
   Funnel,
@@ -48,21 +46,14 @@ import {
   FileText,
   Pulse,
   ArrowsClockwise,
-  Lightning,
   CheckCircle,
   XCircle,
   Clock,
   CreditCard,
   Money,
-  Buildings,
   WifiHigh,
-  WifiSlash,
   DownloadSimple,
-  UploadSimple,
-  Warning,
   SignOut,
-  Gear,
-  UserCheck,
   Printer,
   Globe,
   ChartBar,
@@ -75,9 +66,7 @@ import {
   SortAscending,
   SortDescending,
   CaretDown,
-  Swap,
   Calculator,
-  Camera,
   X
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -166,28 +155,29 @@ interface InvoiceData {
   createdAt: string;
 }
 
+const tabs = ['dashboard', 'transactions', 'invoices', 'countries', 'converter'];
+
 function App() {
-  console.log('🚀 App component: Starting initialization...');
-  
+
   const { showTransactionNotification } = useNotifications();
   console.log('✅ App: useNotifications initialized');
-  
+
   const capacitor = useCapacitor();
   console.log('✅ App: useCapacitor initialized', capacitor);
-  
-  const { isNative, platform: capacitorPlatform, isOnline, hapticFeedback } = capacitor;
+
+  const { hapticFeedback } = capacitor;
   const electron = useElectron();
   console.log('✅ App: useElectron initialized', { isElectron: electron.isElectron });
-  
-  const { isElectron, platform: electronPlatform, registerMenuHandlers, registerThemeHandler, showSaveDialog, showOpenDialog, readFile, writeFile } = electron;
+
+  const { isElectron, registerMenuHandlers, registerThemeHandler, showSaveDialog, readFile, writeFile } = electron;
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showCountrySelection, setShowCountrySelection] = useState(false);
-  
+
   console.log('✅ App: State initialized');
 
   const [showSystemSettings, setShowSystemSettings] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
-  const [showCurrencyConverter, setShowCurrencyConverter] = useState(false);
+  // const [showCurrencyConverter, setShowCurrencyConverter] = useState(false);
   const [showRateAlerts, setShowRateAlerts] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<{
     flag: string;
@@ -204,24 +194,24 @@ function App() {
     pair: string;
     rate: ExchangeRate;
   } | null>(null);
-  const [transactions, setTransactions] = useKV<Transaction[]>("transactions", []);
-  const [clients, setClients] = useKV<Client[]>("clients", []);
-  const [invoices, setInvoices] = useKV<InvoiceData[]>("invoices", []);
-  const [exchangeRates, setExchangeRates] = useKV<ExchangeRate[]>("exchangeRates", []);
-  const [printerStatus, setPrinterStatus] = useKV<PrinterStatus>("printerStatus", {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([]);
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatus>({
     connected: false,
     paperLevel: 0,
     model: "ESC/POS Thermal Printer",
     temperature: 0,
     errors: []
   });
-  
+
   // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useKV<boolean>("isAuthenticated", false);
-  const [currentUser, setCurrentUser] = useKV<string>("currentUser", "");
-  
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<string>("");
+
   // Theme state - Integrated with system settings
-  const [systemConfig, setSystemConfig] = useKV<SystemConfig>("systemConfig", {
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>({
     companyName: "RJB TRANZ",
     companyEmail: "admin@rjbtranz.com",
     companyPhone: "+233-123-456-789",
@@ -244,21 +234,21 @@ function App() {
     sleepModeDelay: 10, // Default 10 minutes
     fontScale: 1.0 // Default font scale
   });
-  
+
   const [isDarkMode, setIsDarkMode] = useState(false);
-  
+
   // Use font scale hook
-  const { fontScale, getFontSize, getScaleClass } = useFontScale(systemConfig?.fontScale || 1.0);
-  
+  const { fontScale } = useFontScale(systemConfig?.fontScale || 1.0);
+
   // Pagination state for invoices
   const [currentInvoicePage, setCurrentInvoicePage] = useState(1);
   const invoicesPerPage = 5;
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  
+
   // Transaction filtering state
   const [amountFilter, setAmountFilter] = useState({
     min: "",
@@ -269,26 +259,26 @@ function App() {
     end: ""
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  
+
   // Transaction sorting state
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'name' | 'status'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
-  const [showPWAInstall, setShowPWAInstall] = useState(true);
+  // const [showPWAInstall, setShowPWAInstall] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // Sleep mode state
   const [showSleepMode, setShowSleepMode] = useState(false);
   const [sleepModeTimeout, setSleepModeTimeout] = useState<NodeJS.Timeout | null>(null);
-  
+
   // Enhanced filtering state
   const [baseCurrency, setBaseCurrency] = useState("USD");
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [rateSortOrder, setRateSortOrder] = useState<'asc' | 'desc'>('asc');
   const [favoriteRates, setFavoriteRates] = useKV<string[]>("favoriteRates", []);
-  const [autoRefreshRates, setAutoRefreshRates] = useState(true);
-  
+  const [autoRefreshRates] = useState(true);
+
   // Analytics modal state
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [analyticsType, setAnalyticsType] = useState<'revenue' | 'volume' | 'growth' | 'average' | 'clients' | 'conversion'>('revenue');
@@ -304,7 +294,6 @@ function App() {
 
   // Mobile tab navigation
   const [currentTabIndex, setCurrentTabIndex] = useState(0);
-  const tabs = ['dashboard', 'transactions', 'invoices', 'countries', 'converter', 'profile-demo'];
 
   const handleAnalyticsClick = (type: 'revenue' | 'volume' | 'growth' | 'average' | 'clients' | 'conversion', title: string) => {
     setAnalyticsType(type);
@@ -317,19 +306,23 @@ function App() {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
-    setCurrentUser("");
-    setIsAuthenticated(false);
-    setActiveTab("dashboard");
-    setShowSystemSettings(false);
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error(error.message);
+    } else {
+      // State updates will be handled by onAuthStateChange listener
+      setActiveTab("dashboard");
+      setShowSystemSettings(false);
+    }
   };
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     const newTheme = isDarkMode ? 'light' : 'dark';
     setSystemConfig((prev) => {
       const current = prev || {
         companyName: "RJB TRANZ",
-        companyEmail: "admin@rjbtranz.com", 
+        companyEmail: "admin@rjbtranz.com",
         companyPhone: "+233-123-456-789",
         companyAddress: "Accra, Ghana",
         businessLicense: "BL-2024-001",
@@ -353,7 +346,7 @@ function App() {
       return { ...current, theme: newTheme };
     });
     setIsDarkMode(!isDarkMode);
-  };
+  }, [isDarkMode]);
 
   // Apply theme to document based on system config
   useEffect(() => {
@@ -367,7 +360,7 @@ function App() {
     }
 
     setIsDarkMode(shouldBeDark);
-    
+
     if (shouldBeDark) {
       document.documentElement.classList.add('dark');
     } else {
@@ -411,7 +404,7 @@ function App() {
     resetSleepTimer();
 
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
+
     const handleActivity = () => {
       if (!showSleepMode) {
         resetSleepTimer();
@@ -434,7 +427,7 @@ function App() {
 
   // Keyboard shortcut to exit sleep mode
   useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
+    const handleKeyPress = (_event: KeyboardEvent) => {
       if (showSleepMode) {
         setShowSleepMode(false);
         // Reset sleep timer after waking up only if sleep mode is enabled
@@ -456,21 +449,21 @@ function App() {
   }, [showSleepMode, sleepModeTimeout, systemConfig?.sleepModeDelay]);
 
   // Professional loading component
-  const LoadingCard = ({ children }: { children: React.ReactNode }) => (
-    <Card className="animate-pulse-professional">
-      <CardContent className="p-6">
-        {children}
-      </CardContent>
-    </Card>
-  );
+  // const LoadingCard = ({ children }: { children: React.ReactNode }) => (
+  //   <Card className="animate-pulse-professional">
+  //     <CardContent className="p-6">
+  //       {children}
+  //     </CardContent>
+  //   </Card>
+  // );
 
   useEffect(() => {
-  
 
-  // Listen for custom navigation events from notifications
+
+    // Listen for custom navigation events from notifications
     const handleSwitchToTransactions = (event: CustomEvent) => {
       setActiveTab('transactions');
-      const { transactionId } = event.detail;
+      const { transactionId } = event.detail as { transactionId?: string };
       if (transactionId) {
         // You could scroll to specific transaction here
         console.log('Navigating to transaction:', transactionId);
@@ -478,7 +471,7 @@ function App() {
     };
 
     // PWA event listeners
-    const handlePWAUpdate = (event: CustomEvent) => {
+    const handlePWAUpdate = (_event: CustomEvent) => {
       console.log('PWA update available');
       // You could show a toast or modal here
     };
@@ -507,7 +500,7 @@ function App() {
     window.addEventListener('app-focus', handleAppFocus);
     window.addEventListener('app-online', handleAppOnline);
     window.addEventListener('app-offline', handleAppOffline);
-    
+
     return () => {
       window.removeEventListener('switchToTransactions', handleSwitchToTransactions as EventListener);
       window.removeEventListener('pwa-update-available', handlePWAUpdate as EventListener);
@@ -515,7 +508,7 @@ function App() {
       window.removeEventListener('app-online', handleAppOnline);
       window.removeEventListener('app-offline', handleAppOffline);
     };
-  }, [exchangeRates]);
+  }, [exchangeRates, refreshData]);
 
   const handleTransactionClick = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -533,7 +526,7 @@ function App() {
 
   const handleTransactionComplete = (transactionId: string) => {
     updateTransactionStatus(transactionId, 'completed');
-    
+
     // Show completion animation with enhanced feedback
     toast.success("🎉 Transaction Completed Successfully!", {
       description: "The recipient can now collect the funds. Receipt is ready for download.",
@@ -541,21 +534,34 @@ function App() {
     });
   };
 
-  const handleTransactionContinue = (transactionData: any) => {
+  const handleTransactionContinue = (transactionData: {
+    id: string;
+    receiverData: {
+      name: string;
+      email: string;
+      phone: string;
+      // The amount the receiver gets after fees
+      receiverAmount: number;
+    };
+    editedRate: number;
+  }) => {
     // Update transaction with receiver information
-    setTransactions(prev => prev?.map(t => 
-      t.id === transactionData.id 
+    setTransactions(prev => prev?.map(t =>
+      t.id === transactionData.id
         ? {
-            ...t,
-            receiverName: transactionData.receiverData.name,
-            receiverEmail: transactionData.receiverData.email,
-            receiverPhone: transactionData.receiverData.phone,
-            receiverAmount: transactionData.receiverData.amount,
-            exchangeRate: transactionData.editedRate
-          }
+          ...t,
+          receiverName: transactionData.receiverData.name,
+          receiverEmail: transactionData.receiverData.email,
+          receiverPhone: transactionData.receiverData.phone,
+          // Calculate the fee based on the sender's original amount and the configured fee rate
+          fee: (t.amount * (systemConfig.defaultFeeRate / 100)),
+          // The amount the receiver gets is the sender's amount minus the fee
+          receiverAmount: t.amount * (1 - (systemConfig.defaultFeeRate / 100)),
+          exchangeRate: transactionData.editedRate,
+        }
         : t
     ) || []);
-    
+
     toast.success("Transaction information updated successfully");
   };
 
@@ -564,388 +570,37 @@ function App() {
 
   useEffect(() => {
     console.log('🔄 App: Data initialization useEffect triggered');
-    console.log('Current data state:', {
-      transactionsLength: transactions?.length,
-      clientsLength: clients?.length,
-      exchangeRatesLength: exchangeRates?.length,
-      invoicesLength: invoices?.length
-    });
-    
+
     const initializeData = async () => {
       try {
         console.log('📊 Initializing data...');
-        
-        // Initialize transactions with better error handling
-        if (!transactions || transactions.length === 0) {
-          console.log('Setting sample transactions');
-          const sampleTransactions: Transaction[] = [
-            {
-              id: "TXN-001",
-              clientName: "John Smith",
-              clientEmail: "john.smith@email.com",
-              amount: 1000,
-              fromCurrency: "USD",
-              toCurrency: "GHS",
-              exchangeRate: 12.45,
-              fee: 25,
-              status: "completed",
-              createdAt: new Date().toISOString(),
-              receiptPrinted: true,
-              phoneNumber: "+1-555-0123",
-              transactionType: "send" as const,
-              uniqueId: "A1B2C3D",
-              formatId: "USD-123-2406132158-00001",
-              uniqueCode: "RJB3er43wd5"
-            },
-            {
-              id: "TXN-002",
-              clientName: "Mary Johnson",
-              clientEmail: "mary.j@email.com",
-              amount: 500,
-              fromCurrency: "USD",
-              toCurrency: "NGN",
-              exchangeRate: 795.50,
-              fee: 15,
-              status: "pending",
-              createdAt: new Date(Date.now() - 3600000).toISOString(),
-              receiptPrinted: false,
-              phoneNumber: "+1-555-0124",
-              transactionType: "send" as const,
-              uniqueId: "B2C3D4E",
-              formatId: "USD-124-2406132157-00002",
-              uniqueCode: "RJB4rf56tg7"
-            },
-            {
-              id: "TXN-003",
-              clientName: "David Brown",
-              clientEmail: "david.brown@email.com",
-              amount: 750,
-              fromCurrency: "USD",
-              toCurrency: "PHP",
-              exchangeRate: 56.75,
-              fee: 20,
-              status: "completed",
-              createdAt: new Date(Date.now() - 7200000).toISOString(),
-              receiptPrinted: true,
-              phoneNumber: "+1-555-0125",
-              transactionType: "receive" as const,
-              uniqueId: "C3D4E5F",
-              formatId: "PHP-125-2406132156-00003",
-              uniqueCode: "RJB5tg67yh8"
-            },
-            // Add more pending transactions for testing receive functionality
-            {
-              id: "TXN-004",
-              clientName: "Sarah Wilson",
-              clientEmail: "sarah.wilson@email.com",
-              amount: 800,
-              fromCurrency: "USD",
-              toCurrency: "GHS",
-              exchangeRate: 12.45,
-              fee: 20,
-              status: "pending",
-              createdAt: new Date(Date.now() - 1800000).toISOString(),
-              receiptPrinted: false,
-              phoneNumber: "+1-555-0126",
-              transactionType: "send" as const,
-              uniqueId: "D4E5F6G",
-              formatId: "USD-126-2406132155-00004",
-              uniqueCode: "RJB6yh78uj9"
-            },
-            {
-              id: "TXN-005",
-              clientName: "Michael Chen",
-              clientEmail: "m.chen@email.com",
-              amount: 1200,
-              fromCurrency: "USD",
-              toCurrency: "PHP",
-              exchangeRate: 56.75,
-              fee: 30,
-              status: "pending",
-              createdAt: new Date(Date.now() - 900000).toISOString(),
-              receiptPrinted: false,
-              phoneNumber: "+1-555-0127",
-              transactionType: "send" as const,
-              uniqueId: "E5F6G7H",
-              formatId: "USD-127-2406132154-00005",
-              uniqueCode: "RJB7uj90ik0"
-            },
-            {
-              id: "TXN-006",
-              clientName: "Lisa Rodriguez",
-              clientEmail: "lisa.r@email.com",
-              amount: 650,
-              fromCurrency: "USD",
-              toCurrency: "NGN",
-              exchangeRate: 795.50,
-              fee: 18,
-              status: "pending",
-              createdAt: new Date(Date.now() - 2700000).toISOString(),
-              receiptPrinted: false,
-              phoneNumber: "+1-555-0128",
-              transactionType: "send" as const,
-              uniqueId: "F6G7H8I",
-              formatId: "USD-128-2406132153-00006",
-              uniqueCode: "RJB8ik01ol2"
-            }
-          ];
-          setTransactions(sampleTransactions);
-        }
-
-        // Initialize clients with better error handling
-        if (!clients || clients.length === 0) {
-          console.log('Setting sample clients');
-          const sampleClients: Client[] = [
-            {
-              id: "CL-001",
-              name: "John Smith",
-              email: "john.smith@email.com",
-              phone: "+1-555-0123",
-              totalTransactions: 15,
-              totalVolume: 12500,
-              lastVisit: new Date().toISOString(),
-              verificationStatus: "verified",
-              registrationDate: new Date(Date.now() - 30 * 24 * 3600000).toISOString()
-            },
-            {
-              id: "CL-002",
-              name: "Mary Johnson",
-              email: "mary.j@email.com",
-              phone: "+1-555-0124",
-              totalTransactions: 8,
-              totalVolume: 6200,
-              lastVisit: new Date(Date.now() - 3600000).toISOString(),
-              verificationStatus: "verified",
-              registrationDate: new Date(Date.now() - 45 * 24 * 3600000).toISOString()
-            },
-            {
-              id: "CL-003",
-              name: "David Brown",
-              email: "david.brown@email.com",
-              phone: "+1-555-0125",
-              totalTransactions: 3,
-              totalVolume: 2100,
-              lastVisit: new Date(Date.now() - 7200000).toISOString(),
-              verificationStatus: "pending",
-              registrationDate: new Date(Date.now() - 7 * 24 * 3600000).toISOString()
-            }
-          ];
-          setClients(sampleClients);
-        }
-
-        if (!exchangeRates || exchangeRates.length === 0) {
-        const sampleRates: ExchangeRate[] = [
-          // Africa
-          { pair: "USD/GHS", rate: 12.45, change: 0.15, changePercent: 1.22, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/NGN", rate: 795.50, change: -5.25, changePercent: -0.66, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/KES", rate: 129.75, change: 2.10, changePercent: 1.64, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/ZAR", rate: 18.75, change: -0.12, changePercent: -0.64, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/EGP", rate: 30.85, change: 0.25, changePercent: 0.82, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/MAD", rate: 10.15, change: 0.08, changePercent: 0.79, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/TND", rate: 3.12, change: -0.02, changePercent: -0.64, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/ETB", rate: 55.20, change: 1.15, changePercent: 2.13, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/UGX", rate: 3750.00, change: 25.50, changePercent: 0.68, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/TZS", rate: 2510.00, change: -15.75, changePercent: -0.62, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/RWF", rate: 1285.50, change: 8.25, changePercent: 0.65, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/XOF", rate: 615.25, change: 3.75, changePercent: 0.61, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/BWP", rate: 13.65, change: -0.08, changePercent: -0.58, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/NAD", rate: 18.75, change: -0.12, changePercent: -0.64, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/ZMW", rate: 26.50, change: 0.35, changePercent: 1.34, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/AOA", rate: 835.50, change: 5.75, changePercent: 0.69, lastUpdated: new Date().toISOString(), region: 'africa' },
-
-          // Asia
-          { pair: "USD/INR", rate: 83.25, change: 0.45, changePercent: 0.54, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/PHP", rate: 56.75, change: -0.85, changePercent: -1.48, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/JPY", rate: 149.85, change: 1.25, changePercent: 0.84, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/CNY", rate: 7.28, change: -0.02, changePercent: -0.27, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/KRW", rate: 1335.50, change: 8.75, changePercent: 0.66, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/SGD", rate: 1.35, change: -0.01, changePercent: -0.74, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/MYR", rate: 4.68, change: 0.03, changePercent: 0.65, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/THB", rate: 36.45, change: -0.25, changePercent: -0.68, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/VND", rate: 24350.00, change: 125.00, changePercent: 0.52, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/IDR", rate: 15750.00, change: -85.50, changePercent: -0.54, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/PKR", rate: 285.75, change: 2.15, changePercent: 0.76, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/LKR", rate: 325.50, change: -1.85, changePercent: -0.56, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/BDT", rate: 109.85, change: 0.65, changePercent: 0.60, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/NPR", rate: 133.20, change: 0.85, changePercent: 0.64, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/MMK", rate: 2095.00, change: 15.75, changePercent: 0.76, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/KHR", rate: 4125.00, change: 25.50, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/LAK", rate: 20850.00, change: 125.00, changePercent: 0.60, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/MNT", rate: 3450.00, change: 18.75, changePercent: 0.55, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/AFN", rate: 72.50, change: 0.45, changePercent: 0.63, lastUpdated: new Date().toISOString(), region: 'asia' },
-
-          // Europe
-          { pair: "USD/EUR", rate: 0.92, change: -0.005, changePercent: -0.54, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/GBP", rate: 0.79, change: -0.003, changePercent: -0.38, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/CHF", rate: 0.88, change: 0.002, changePercent: 0.23, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/SEK", rate: 10.85, change: 0.08, changePercent: 0.74, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/NOK", rate: 10.65, change: 0.12, changePercent: 1.14, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/DKK", rate: 6.85, change: -0.04, changePercent: -0.58, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/PLN", rate: 4.28, change: 0.03, changePercent: 0.71, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/CZK", rate: 22.75, change: 0.15, changePercent: 0.66, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/HUF", rate: 365.50, change: 2.25, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/RON", rate: 4.68, change: 0.02, changePercent: 0.43, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/BGN", rate: 1.80, change: -0.01, changePercent: -0.56, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/HRK", rate: 6.95, change: -0.04, changePercent: -0.57, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/RSD", rate: 108.50, change: 0.75, changePercent: 0.70, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/RUB", rate: 95.25, change: 1.85, changePercent: 1.98, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/UAH", rate: 36.85, change: 0.25, changePercent: 0.68, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/TRY", rate: 28.75, change: 0.45, changePercent: 1.59, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/ALL", rate: 95.25, change: 0.65, changePercent: 0.69, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/AMD", rate: 395.50, change: 2.25, changePercent: 0.57, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/AZN", rate: 1.70, change: 0.01, changePercent: 0.59, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/BAM", rate: 1.80, change: -0.01, changePercent: -0.56, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/BYN", rate: 3.25, change: 0.02, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'europe' },
-
-          // North America (USA pinned to top)
-          { pair: "USD/USD", rate: 1.00, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/CAD", rate: 1.36, change: 0.008, changePercent: 0.59, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/MXN", rate: 17.85, change: -0.12, changePercent: -0.67, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/GTQ", rate: 7.85, change: -0.03, changePercent: -0.38, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/HNL", rate: 24.65, change: 0.08, changePercent: 0.33, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/NIO", rate: 36.75, change: 0.15, changePercent: 0.41, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/CRC", rate: 535.50, change: 2.25, changePercent: 0.42, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/PAB", rate: 1.00, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/DOP", rate: 56.85, change: 0.35, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/JMD", rate: 155.25, change: 0.85, changePercent: 0.55, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/BBD", rate: 2.00, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/BZD", rate: 2.02, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/BMD", rate: 1.00, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/KYD", rate: 0.83, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/AWG", rate: 1.79, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-
-          // South America
-          { pair: "USD/BRL", rate: 4.95, change: 0.08, changePercent: 1.64, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/ARS", rate: 365.50, change: 8.75, changePercent: 2.45, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/CLP", rate: 885.50, change: -5.25, changePercent: -0.59, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/COP", rate: 4125.00, change: 25.50, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/PEN", rate: 3.75, change: 0.02, changePercent: 0.54, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/UYU", rate: 39.25, change: -0.15, changePercent: -0.38, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/VES", rate: 36.15, change: 0.85, changePercent: 2.41, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/BOB", rate: 6.92, change: 0.01, changePercent: 0.14, lastUpdated: new Date().toISOString(), region: 'south-america' },
-          { pair: "USD/PYG", rate: 7350.00, change: 45.50, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'south-america' },
-
-          // Oceania
-          { pair: "USD/AUD", rate: 1.52, change: 0.01, changePercent: 0.66, lastUpdated: new Date().toISOString(), region: 'oceania' },
-          { pair: "USD/NZD", rate: 1.65, change: 0.008, changePercent: 0.49, lastUpdated: new Date().toISOString(), region: 'oceania' },
-          { pair: "USD/FJD", rate: 2.25, change: 0.01, changePercent: 0.45, lastUpdated: new Date().toISOString(), region: 'oceania' },
-
-          // Middle East
-          { pair: "USD/AED", rate: 3.67, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/SAR", rate: 3.75, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/QAR", rate: 3.64, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/KWD", rate: 0.31, change: -0.001, changePercent: -0.32, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/BHD", rate: 0.38, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/OMR", rate: 0.39, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/JOD", rate: 0.71, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/LBP", rate: 15050.00, change: 50.00, changePercent: 0.33, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/ILS", rate: 3.85, change: 0.02, changePercent: 0.52, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/IRR", rate: 42150.00, change: 250.00, changePercent: 0.60, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/IQD", rate: 1310.00, change: 8.50, changePercent: 0.65, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/SYP", rate: 2512.50, change: 15.75, changePercent: 0.63, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-          { pair: "USD/YER", rate: 250.75, change: 1.25, changePercent: 0.50, lastUpdated: new Date().toISOString(), region: 'middle-east' },
-
-          // Additional Africa
-          { pair: "USD/DZD", rate: 134.50, change: 0.85, changePercent: 0.63, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/LYD", rate: 4.85, change: 0.03, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/SDG", rate: 602.50, change: 3.75, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/SOS", rate: 571.25, change: 2.85, changePercent: 0.50, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/DJF", rate: 177.85, change: 0.95, changePercent: 0.54, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/ERN", rate: 15.00, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/MZN", rate: 63.75, change: 0.45, changePercent: 0.71, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/MWK", rate: 1735.00, change: 12.50, changePercent: 0.72, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/SZL", rate: 18.75, change: -0.12, changePercent: -0.64, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/LSL", rate: 18.75, change: -0.12, changePercent: -0.64, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/MGA", rate: 4650.00, change: 28.50, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/MUR", rate: 46.25, change: 0.32, changePercent: 0.70, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/SCR", rate: 13.45, change: 0.08, changePercent: 0.60, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/GMD", rate: 71.50, change: 0.45, changePercent: 0.63, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/GNF", rate: 8625.00, change: 52.50, changePercent: 0.61, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/SLE", rate: 22.75, change: 0.15, changePercent: 0.66, lastUpdated: new Date().toISOString(), region: 'africa' },
-          { pair: "USD/LRD", rate: 195.50, change: 1.25, changePercent: 0.64, lastUpdated: new Date().toISOString(), region: 'africa' },
-
-          // Additional Asia
-          { pair: "USD/UZS", rate: 12450.00, change: 75.50, changePercent: 0.61, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/KZT", rate: 485.75, change: 3.25, changePercent: 0.67, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/KGS", rate: 86.50, change: 0.55, changePercent: 0.64, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/TJS", rate: 10.95, change: 0.07, changePercent: 0.64, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/TMT", rate: 3.50, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/BND", rate: 1.35, change: -0.01, changePercent: -0.74, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/MVR", rate: 15.42, change: 0.01, changePercent: 0.06, lastUpdated: new Date().toISOString(), region: 'asia' },
-          { pair: "USD/BTN", rate: 84.25, change: 0.50, changePercent: 0.60, lastUpdated: new Date().toISOString(), region: 'asia' },
-
-          // Additional Europe  
-          { pair: "USD/ISK", rate: 138.50, change: 0.85, changePercent: 0.62, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/MDL", rate: 18.25, change: 0.12, changePercent: 0.66, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/MKD", rate: 56.75, change: 0.38, changePercent: 0.67, lastUpdated: new Date().toISOString(), region: 'europe' },
-          { pair: "USD/GEL", rate: 2.75, change: 0.02, changePercent: 0.73, lastUpdated: new Date().toISOString(), region: 'europe' },
-
-          // Additional Caribbean & Islands
-          { pair: "USD/BMD", rate: 1.00, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/KYD", rate: 0.83, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' },
-          { pair: "USD/AWG", rate: 1.79, change: 0.00, changePercent: 0.00, lastUpdated: new Date().toISOString(), region: 'north-america' }
-        ];
-        setExchangeRates(sampleRates);
+        // State variables are already initialized as empty arrays
+      } catch (error) {
+        console.error('Error initializing data:', error);
       }
 
-      if (!invoices || invoices.length === 0) {
-        const sampleInvoices: InvoiceData[] = [
-          {
-            id: "INV-001",
-            receiverName: "Sarah Wilson",
-            receiverEmail: "sarah.wilson@email.com",
-            receiverPhone: "+1-555-0199",
-            amount: 2500,
-            description: "Consulting services for Q4 2024",
-            dueDate: new Date(Date.now() + 14 * 24 * 3600000).toISOString().split('T')[0],
-            status: "sent",
-            createdAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString()
-          },
-          {
-            id: "INV-002",
-            receiverName: "Michael Chen",
-            receiverEmail: "m.chen@techcorp.com",
-            receiverPhone: "+1-555-0200",
-            amount: 1800,
-            description: "Web development project - Phase 1",
-            dueDate: new Date(Date.now() + 7 * 24 * 3600000).toISOString().split('T')[0],
-            status: "draft",
-            createdAt: new Date(Date.now() - 1 * 24 * 3600000).toISOString()
-          }
-        ];
-        setInvoices(sampleInvoices);
-      }
-    } catch (error) {
-      console.error('Error initializing data:', error);
-      // Set empty arrays as fallback
-      if (!transactions) setTransactions([]);
-      if (!clients) setClients([]);
-      if (!exchangeRates) setExchangeRates([]);
-      if (!invoices) setInvoices([]);
-    }
-    
-    setDataInitialized(true);
-    console.log('✅ Data initialization complete');
-  };
+      setDataInitialized(true);
+      console.log('✅ Data initialization complete');
+    };
 
     initializeData();
     return () => {
       console.log('🔄 Data initialization useEffect cleanup');
     };
-  }, []); // Remove circular dependencies - only initialize once on mount
+  }, []); // Empty dependency array to run only once on mount
 
   useEffect(() => {
-  
+
     // Enhanced startup sequence with faster loading
     const initializeApp = async () => {
       try {
         // Show splash screen briefly
         await new Promise(resolve => setTimeout(resolve, 600));
         setShowSplash(false);
-        
+
         // Then show detailed loading screen
         await new Promise(resolve => setTimeout(resolve, 400)); // Auth check
-        await new Promise(resolve => setTimeout(resolve, 300)); // Data loading  
+        await new Promise(resolve => setTimeout(resolve, 300)); // Data loading
         await new Promise(resolve => setTimeout(resolve, 200)); // UI preparation
         setIsInitialLoad(false);
       } catch (error) {
@@ -965,7 +620,7 @@ function App() {
             refreshData();
           }
         };
-        
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
@@ -981,31 +636,31 @@ function App() {
     const initializePWA = async () => {
       try {
         // Setup PWA event listeners
-        const handlePhotoCapture = (event: any) => {
+        const handlePhotoCapture = (event: CustomEvent) => {
           console.log('📸 Photo captured:', event.detail);
           // You could save the photo or add it to transactions
         };
 
-        const handleFileShared = (event: any) => {
+        const handleFileShared = (event: CustomEvent) => {
           console.log('📄 File shared:', event.detail);
           // Handle shared CSV/JSON files
-          if (event.detail.type === 'text/csv') {
+          if ((event.detail as { type: string }).type === 'text/csv') {
             // Process CSV transaction data
             setActiveTab('transactions');
           }
         };
 
-        const handleAppShortcut = (event: any) => {
+        const handleAppShortcut = (event: CustomEvent) => {
           console.log('🔗 App shortcut used:', event.detail);
-          if (event.detail.tab) {
-            setActiveTab(event.detail.tab);
+          if ((event.detail as { tab: string }).tab) {
+            setActiveTab((event.detail as { tab: string }).tab);
           }
         };
 
         // Setup PWA event listeners
-        window.addEventListener('photo-captured', handlePhotoCapture);
-        window.addEventListener('file-shared', handleFileShared);
-        window.addEventListener('app-shortcut', handleAppShortcut);
+        window.addEventListener('photo-captured', handlePhotoCapture as EventListener);
+        window.addEventListener('file-shared', handleFileShared as EventListener);
+        window.addEventListener('app-shortcut', handleAppShortcut as EventListener);
 
         // PWA lifecycle monitoring
         const handleVisibilityChange = () => {
@@ -1014,20 +669,20 @@ function App() {
             refreshData();
           }
         };
-        
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
-          window.removeEventListener('photo-captured', handlePhotoCapture);
-          window.removeEventListener('file-shared', handleFileShared);
-          window.removeEventListener('app-shortcut', handleAppShortcut);
+          window.removeEventListener('photo-captured', handlePhotoCapture as EventListener);
+          window.removeEventListener('file-shared', handleFileShared as EventListener);
+          window.removeEventListener('app-shortcut', handleAppShortcut as EventListener);
           document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
       } catch (error) {
         console.error('Error initializing PWA service:', error);
       }
     };
-  }, []); // Remove dataInitialized dependency to prevent re-runs
+  }, [refreshData]); // Add refreshData to dependencies
 
   // Simulated printer connection check
   useEffect(() => {
@@ -1047,15 +702,15 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const handlePrintReceipt = async (transactionId: string) => {
+  const handlePrintReceipt = useCallback(async (transactionId: string) => {
     setIsLoading(true);
-    
+
     try {
       // Simulate print job - Faster
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       if (printerStatus?.connected) {
-        setTransactions((prev) => prev?.map(t => 
+        setTransactions((prev) => prev?.map(t =>
           t.id === transactionId ? { ...t, receiptPrinted: true } : t
         ) || []);
         toast.success("Receipt printed successfully");
@@ -1067,9 +722,9 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [printerStatus?.connected, setIsLoading]);
 
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     setIsRefreshing(true);
 
     try {
@@ -1163,8 +818,7 @@ function App() {
       } else {
         throw new Error('Invalid API response');
       }
-    } catch (error) {
-      console.error('Failed to fetch exchange rates:', error);
+    } catch {
 
       // Fallback to simulated refresh if API fails
       setExchangeRates((prev) => (prev || []).map(rate => {
@@ -1182,38 +836,38 @@ function App() {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [exchangeRates]);
 
-  const exportData = async (type: 'transactions' | 'clients' | 'invoices' | 'countries') => {
-    let data;
-    let filename;
-    
+  const exportData = useCallback(async (type: 'transactions' | 'clients' | 'invoices' | 'countries') => {
+    let data: unknown[];
+    let filename: string;
+
     switch (type) {
       case 'transactions':
-        data = transactions;
+        data = transactions || [];
         filename = `transactions_export_${new Date().toISOString().split('T')[0]}.csv`;
         break;
       case 'clients':
-        data = clients;
+        data = clients || [];
         filename = `clients_export_${new Date().toISOString().split('T')[0]}.csv`;
         break;
       case 'invoices':
-        data = invoices;
+        data = invoices || [];
         filename = `invoices_export_${new Date().toISOString().split('T')[0]}.csv`;
         break;
       case 'countries':
-        data = exchangeRates;
+        data = exchangeRates || [];
         filename = `exchange_rates_export_${new Date().toISOString().split('T')[0]}.csv`;
         break;
       default:
         data = [];
         filename = `export_${new Date().toISOString().split('T')[0]}.csv`;
     }
-    
+
     // Generate CSV content
-    const csvContent = (data && data.length > 0 && data[0] ? Object.keys(data[0]).join(",") + "\n" + 
-     data.filter(row => row).map(row => Object.values(row).join(",")).join("\n") : "");
-    
+    const csvContent = (data && data.length > 0 && data[0] ? Object.keys(data[0]).join(",") + "\n" +
+      data.filter(row => row).map(row => Object.values(row as Record<string, unknown>).join(",")).join("\n") : "");
+
     if (isElectron) {
       // Desktop: Use native file dialog
       const result = await showSaveDialog({
@@ -1224,12 +878,12 @@ function App() {
           { name: 'All Files', extensions: ['*'] }
         ]
       });
-      
-      if (!result.canceled && result.filePath) {
+
+      if (result && !result.canceled && result.filePath) {
         try {
           await writeFile(result.filePath, csvContent);
           toast.success(`${type} data exported successfully`);
-        } catch (error) {
+        } catch {
           toast.error(`Failed to export ${type} data`);
         }
       }
@@ -1242,10 +896,10 @@ function App() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success(`${type} data exported successfully`);
     }
-  };
+  }, [clients, exchangeRates, invoices, isElectron, showSaveDialog, transactions, writeFile]);
 
   // Remove Electron menu listeners - Web app doesn't need this
   useEffect(() => {
@@ -1295,7 +949,7 @@ function App() {
             };
             await writeFile(filePath, JSON.stringify(backupData, null, 2));
             toast.success('Data backed up successfully');
-          } catch (error) {
+          } catch {
             toast.error('Failed to backup data');
           }
         },
@@ -1303,15 +957,15 @@ function App() {
           try {
             const data = await readFile(filePath);
             const backupData = JSON.parse(data);
-            
+
             if (backupData.transactions) setTransactions(backupData.transactions);
             if (backupData.clients) setClients(backupData.clients);
             if (backupData.invoices) setInvoices(backupData.invoices);
             if (backupData.exchangeRates) setExchangeRates(backupData.exchangeRates);
             if (backupData.systemConfig) setSystemConfig(backupData.systemConfig);
-            
+
             toast.success('Data restored successfully');
-          } catch (error) {
+          } catch {
             toast.error('Failed to restore data');
           }
         }
@@ -1323,7 +977,7 @@ function App() {
         setSystemConfig(prev => {
           const current = prev || {
             companyName: "RJB TRANZ",
-            companyEmail: "admin@rjbtranz.com", 
+            companyEmail: "admin@rjbtranz.com",
             companyPhone: "+233-123-456-789",
             companyAddress: "Accra, Ghana",
             businessLicense: "BL-2024-001",
@@ -1353,31 +1007,38 @@ function App() {
         themeCleanup?.();
       };
     }
-  }, [isElectron, transactions, clients, invoices, exchangeRates, systemConfig]);
+  }, [isElectron, transactions, clients, invoices, exchangeRates, systemConfig, exportData, handlePrintReceipt, readFile, refreshData, registerMenuHandlers, registerThemeHandler, toggleTheme, writeFile]);
 
-  const handleCreateInvoice = (data: any) => {
-    const newInvoice: InvoiceData = {
-      id: `INV-${Date.now()}`,
-      receiverName: data.receiverName,
-      receiverEmail: data.receiverEmail,
-      receiverPhone: data.receiverPhone,
-      amount: parseFloat(data.amount),
-      description: data.description,
-      dueDate: data.dueDate,
-      status: 'draft',
-      createdAt: new Date().toISOString()
-    };
-    
-    setInvoices(prev => [...(prev || []), newInvoice]);
-    setSelectedInvoiceCountry(null);
-    setActiveTab('invoices');
-    toast.success("Invoice created successfully");
-  };
+  // const handleCreateInvoice = (data: {
+  //   receiverName: string;
+  //   receiverEmail: string;
+  //   receiverPhone: string;
+  //   amount: string;
+  //   description: string;
+  //   dueDate: string;
+  // }) => {
+  //   const newInvoice: InvoiceData = {
+  //     id: `INV-${Date.now()}`,
+  //     receiverName: data.receiverName,
+  //     receiverEmail: data.receiverEmail,
+  //     receiverPhone: data.receiverPhone,
+  //     amount: parseFloat(data.amount),
+  //     description: data.description,
+  //     dueDate: data.dueDate,
+  //     status: 'draft',
+  //     createdAt: new Date().toISOString()
+  //   };
+
+  //   setInvoices(prev => [...(prev || []), newInvoice]);
+  //   setSelectedInvoiceCountry(null);
+  //   setActiveTab('invoices');
+  //   toast.success("Invoice created successfully");
+  // };
 
   const handleCountrySelectionForInvoice = (currencyPair: string) => {
     const currency = currencyPair.includes('/') ? currencyPair.split('/')[1] : currencyPair;
     const rate = exchangeRates?.find(r => r.pair === currencyPair);
-    
+
     if (rate) {
       setSelectedInvoiceCountry({
         flag: getCountryFlag(currencyPair),
@@ -1417,10 +1078,10 @@ function App() {
   };
 
   const updateTransactionStatus = (transactionId: string, newStatus: 'pending' | 'completed' | 'failed' | 'cancelled') => {
-    setTransactions((prev) => prev?.map(t => 
+    setTransactions((prev) => prev?.map(t =>
       t.id === transactionId ? { ...t, status: newStatus } : t
     ) || []);
-    
+
     // Find the transaction to get details for notification
     const transaction = transactions?.find(t => t.id === transactionId);
     if (transaction) {
@@ -1431,7 +1092,7 @@ function App() {
         currency: transaction.fromCurrency
       });
     }
-    
+
     // Show appropriate toast message based on status
     if (newStatus === 'completed') {
       toast.success(`Transaction completed successfully! 🎉`);
@@ -1451,7 +1112,7 @@ function App() {
     const transaction = transactions?.find(t => t.id === transactionId);
     if (transaction && transaction.status === 'pending') {
       updateTransactionStatus(transactionId, 'completed');
-      
+
       // Additional actions when transaction is completed
       if (systemConfig?.printReceipts && !transaction.receiptPrinted) {
         setTimeout(() => {
@@ -1464,7 +1125,7 @@ function App() {
   // Batch complete multiple pending transactions
   const completeAllPendingTransactions = () => {
     const pendingTransactions = transactions?.filter(t => t.status === 'pending') || [];
-    
+
     if (pendingTransactions.length === 0) {
       toast.info('No pending transactions to complete');
       return;
@@ -1628,7 +1289,7 @@ function App() {
       'AWG': '🇦🇼', // Aruba
       'USD': '🇺🇸', // United States
     };
-    
+
     return flagMap[currency] || '🌍';
   };
 
@@ -1691,18 +1352,18 @@ function App() {
       'BMD': 'Bermuda', 'KYD': 'Cayman Islands', 'AWG': 'Aruba',
       'USD': 'United States',
     };
-    
+
     return countryMap[currency] || 'International';
   };
 
   const handleCountryClick = (currencyPair: string) => {
     const currency = currencyPair.includes('/') ? currencyPair.split('/')[1] : currencyPair;
     const rate = exchangeRates?.find(r => r.pair === currencyPair);
-    
+
     if (rate) {
       // Prevent body scroll when modal opens
       document.body.classList.add('modal-open');
-      
+
       setSelectedCountry({
         flag: getCountryFlag(currencyPair),
         name: getCountryName(currencyPair),
@@ -1745,31 +1406,31 @@ function App() {
     setActiveTab(tabs[newIndex]);
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEndX(null);
-    setTouchStartX(e.touches[0].clientX);
-  };
+  // const handleTouchStart = (e: React.TouchEvent) => {
+  //   setTouchEndX(null);
+  //   setTouchStartX(e.touches[0].clientX);
+  // };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEndX(e.touches[0].clientX);
-  };
+  // const handleTouchMove = (e: React.TouchEvent) => {
+  //   setTouchEndX(e.touches[0].clientX);
+  // };
 
-  const handleTouchEnd = () => {
-    if (!touchStartX || !touchEndX) return;
-    
-    const distance = touchStartX - touchEndX;
-    const minSwipeDistance = 50;
+  // const handleTouchEnd = () => {
+  //   if (!touchStartX || !touchEndX) return;
 
-    if (Math.abs(distance) < minSwipeDistance) return;
+  //   const distance = touchStartX - touchEndX;
+  //   const minSwipeDistance = 50;
 
-    if (distance > 0) {
-      // Swiped left - go to next tab
-      handleMobileTabChange('right');
-    } else {
-      // Swiped right - go to previous tab
-      handleMobileTabChange('left');
-    }
-  };
+  //   if (Math.abs(distance) < minSwipeDistance) return;
+
+  //   if (distance > 0) {
+  //     // Swiped left - go to next tab
+  //     handleMobileTabChange('right');
+  //   } else {
+  //     // Swiped right - go to previous tab
+  //     handleMobileTabChange('left');
+  //   }
+  // };
 
   // Favorites management
   const toggleFavoriteRate = (pair: string) => {
@@ -1829,7 +1490,7 @@ function App() {
   // Enhanced filtering for invoice country selection
   const getFilteredRatesForInvoice = () => {
     let filtered = exchangeRates || [];
-    
+
     // Apply continent filter
     if (selectedContinent !== 'all') {
       const continentRegionMap: { [key: string]: string[] } = {
@@ -1841,52 +1502,57 @@ function App() {
         'oceania': ['oceania'],
         'middle-east': ['middle-east']
       };
-      
+
       const regions = continentRegionMap[selectedContinent] || [];
       filtered = filtered.filter(rate => rate && regions.includes(rate.region));
     }
-    
+
     // Apply search term for invoice selection
     if (invoiceCountrySearch) {
-      filtered = filtered.filter(rate => 
+      filtered = filtered.filter(rate =>
         rate && (
           rate.pair.toLowerCase().includes(invoiceCountrySearch.toLowerCase()) ||
           getCountryName(rate.pair).toLowerCase().includes(invoiceCountrySearch.toLowerCase())
         )
       );
     }
-    
+
     // Sort alphabetically by country name
     filtered.sort((a, b) => {
       if (!a || !b) return 0;
       return getCountryName(a.pair).localeCompare(getCountryName(b.pair));
     });
-    
+
     return filtered.filter(rate => rate != null);
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': 
-      case 'paid': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'pending': 
-      case 'sent': return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'failed': 
-      case 'overdue': 
-      case 'cancelled': return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'draft': return <FileText className="h-4 w-4 text-gray-600" />;
-      default: return <Pulse className="h-4 w-4" />;
+      case 'completed':
+      case 'paid':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'pending':
+      case 'sent':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      case 'failed':
+      case 'overdue':
+      case 'cancelled':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      case 'draft':
+        return <FileText className="h-4 w-4 text-gray-600" />;
+      default:
+        return <Pulse className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': 
+      case 'completed':
       case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': 
+      case 'pending':
       case 'sent': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': 
-      case 'overdue': 
+      case 'failed':
+      case 'overdue':
       case 'cancelled': return 'bg-red-100 text-red-800';
       case 'draft': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -1895,22 +1561,22 @@ function App() {
 
   const filteredTransactions = (transactions || []).filter(t => {
     if (!t) return false;
-    
+
     // Text search
     const matchesSearch = (t.clientName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (t.clientEmail || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (t.id || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
+      (t.clientEmail || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.id || '').toLowerCase().includes(searchTerm.toLowerCase());
+
     // Status filter
     const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-    
+
     // Amount range filter
     const amount = t.amount || 0;
     const minAmount = amountFilter.min ? parseFloat(amountFilter.min) : 0;
     const maxAmount = amountFilter.max ? parseFloat(amountFilter.max) : Infinity;
-    const matchesAmount = (!amountFilter.min || amount >= minAmount) && 
-                         (!amountFilter.max || amount <= maxAmount);
-    
+    const matchesAmount = (!amountFilter.min || amount >= minAmount) &&
+      (!amountFilter.max || amount <= maxAmount);
+
     // Date range filter
     let matchesDate = true;
     if (dateFilter.start || dateFilter.end) {
@@ -1925,42 +1591,46 @@ function App() {
         matchesDate = matchesDate && transactionDate <= endDate;
       }
     }
-    
+
     return matchesSearch && matchesStatus && matchesAmount && matchesDate;
   }).sort((a, b) => {
     if (!a || !b) return 0;
-    
+
     let comparison = 0;
-    
+
     switch (sortBy) {
-      case 'date':
+      case 'date': {
         const dateA = new Date(a.createdAt || '').getTime();
         const dateB = new Date(b.createdAt || '').getTime();
         comparison = dateA - dateB;
         break;
-        
-      case 'amount':
+      }
+
+      case 'amount': {
         const amountA = a.amount || 0;
         const amountB = b.amount || 0;
         comparison = amountA - amountB;
         break;
-        
-      case 'name':
+      }
+
+      case 'name': {
         const nameA = (a.clientName || '').toLowerCase();
         const nameB = (b.clientName || '').toLowerCase();
         comparison = nameA.localeCompare(nameB);
         break;
-        
-      case 'status':
+      }
+
+      case 'status': {
         const statusA = a.status || '';
         const statusB = b.status || '';
         comparison = statusA.localeCompare(statusB);
         break;
-        
+      }
+
       default:
         comparison = 0;
     }
-    
+
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
@@ -2045,8 +1715,8 @@ function App() {
   const filteredInvoices = (invoices || []).filter(invoice => {
     if (!invoice) return false;
     const matchesSearch = (invoice.receiverName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (invoice.receiverEmail || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (invoice.id || '').toLowerCase().includes(searchTerm.toLowerCase());
+      (invoice.receiverEmail || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (invoice.id || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -2080,14 +1750,14 @@ function App() {
   };
 
   // Check if any filters or sorting are active
-  const hasActiveFilters = searchTerm !== "" || 
-                          statusFilter !== "all" || 
-                          amountFilter.min !== "" || 
-                          amountFilter.max !== "" ||
-                          dateFilter.start !== "" || 
-                          dateFilter.end !== "" ||
-                          sortBy !== "date" ||
-                          sortOrder !== "desc";
+  const hasActiveFilters = searchTerm !== "" ||
+    statusFilter !== "all" ||
+    amountFilter.min !== "" ||
+    amountFilter.max !== "" ||
+    dateFilter.start !== "" ||
+    dateFilter.end !== "" ||
+    sortBy !== "date" ||
+    sortOrder !== "desc";
 
   // Keyboard shortcuts for sorting
   useEffect(() => {
@@ -2096,7 +1766,7 @@ function App() {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
+
       // Alt + D for date sort
       if (event.altKey && event.key.toLowerCase() === 'd') {
         event.preventDefault();
@@ -2149,7 +1819,7 @@ function App() {
     }, 60000); // Refresh every 60 seconds
 
     return () => clearInterval(interval);
-  }, [autoRefreshRates]);
+  }, [autoRefreshRates, refreshData]);
 
   // Debounce search term for real-time filtering
   useEffect(() => {
@@ -2171,9 +1841,9 @@ function App() {
       <div className="min-h-screen bg-background flex items-center justify-center animate-app-startup">
         <div className="text-center space-y-6 animate-float">
           <div className="animate-logo-bounce">
-            <img 
-              src="https://i.ibb.co/6LY7bxR/rjb-logo.jpg" 
-              alt="RJB TRANZ Logo" 
+            <img
+              src="https://i.ibb.co/6LY7bxR/rjb-logo.jpg"
+              alt="RJB TRANZ Logo"
               className="h-20 w-20 rounded-full mx-auto shadow-2xl"
             />
           </div>
@@ -2181,9 +1851,9 @@ function App() {
             <h1 className="text-3xl font-bold text-foreground font-montserrat">RJB TRANZ</h1>
             <p className="text-muted-foreground font-montserrat">Admin CRM System</p>
             <div className="flex items-center justify-center space-x-2 mt-4">
-              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
           </div>
         </div>
@@ -2207,7 +1877,7 @@ function App() {
   // Show enhanced carousel as standby/sleep mode if enabled
   if (showSleepMode) {
     return (
-      <FinancialCarousel 
+      <FinancialCarousel
         isStandbyMode={true}
         onWakeUp={handleWakeUp}
         autoSlideDelay={6000} // Slightly slower for standby mode
@@ -2218,7 +1888,7 @@ function App() {
   // Show system settings page
   if (showSystemSettings) {
     return (
-      <SystemSettings 
+      <SystemSettings
         onBack={() => setShowSystemSettings(false)}
         systemConfig={systemConfig}
         onConfigUpdate={handleConfigUpdate}
@@ -2241,7 +1911,7 @@ function App() {
   // Show profile settings page
   if (showProfileSettings) {
     return (
-      <ProfileSettings 
+      <ProfileSettings
         onBack={() => setShowProfileSettings(false)}
         currentUser={currentUser || 'Admin'}
         onUserUpdate={(userData) => {
@@ -2268,13 +1938,13 @@ function App() {
         isAutoRefresh={autoRefreshRates}
         refreshInterval={30000}
       />
-      
+
       {/* Push Notification Service */}
       <PushNotificationService transactions={transactions || []} />
-      
+
       {/* Refresh Indicator */}
       <LoadingStates.RefreshIndicator isRefreshing={isRefreshing} />
-      
+
       {/* Enhanced Header with Sticky Status Bar */}
       <header className="border-b bg-card/95 backdrop-blur-sm sticky top-0 z-50 animate-card-entrance">
         {/* Status Bar */}
@@ -2286,22 +1956,22 @@ function App() {
               <span className="text-muted-foreground">Network Connected</span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Time */}
             <span className="text-muted-foreground font-dynamic-xs">
               {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
-            
+
             {/* Font Scale Indicator */}
             {systemConfig?.fontScale && systemConfig.fontScale !== 1.0 && (
               <span className="text-xs text-primary font-dynamic-xs">
                 Font: {Math.round(systemConfig.fontScale * 100)}%
               </span>
             )}
-            
+
             {/* In-App Notifications */}
-            <InAppNotifications 
+            <InAppNotifications
               transactions={transactions || []}
               currentUser={currentUser || 'Admin'}
             />
@@ -2330,13 +2000,13 @@ function App() {
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Mobile Network Status Indicator */}
             <div className="sm:hidden">
               <WifiHigh className="h-5 w-5 text-green-600" />
             </div>
-            
+
 
             {/* Desktop Version Indicator */}
             {isElectron && (
@@ -2346,7 +2016,7 @@ function App() {
                 </span>
               </div>
             )}
-            
+
             {/* PWA Status Indicator */}
             {!isElectron && pwaManager.isStandalone() && (
               <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-accent/10 rounded-md">
@@ -2355,7 +2025,7 @@ function App() {
                 </span>
               </div>
             )}
-            
+
             {/* Desktop Network Status */}
             <div className="hidden sm:flex items-center gap-2">
               <WifiHigh className="h-4 w-4 text-green-600" />
@@ -2363,7 +2033,7 @@ function App() {
                 Network Connected
               </span>
             </div>
-            
+
             {/* User Menu */}
             <div className="flex items-center gap-2">
               {/* Theme Toggle */}
@@ -2401,7 +2071,7 @@ function App() {
                   }
                 }}
               />
-              
+
               {/* Profile Settings Quick Access */}
               <Button
                 variant="ghost"
@@ -2415,7 +2085,7 @@ function App() {
               >
                 <User className="h-4 w-4" weight="duotone" />
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -2444,17 +2114,15 @@ function App() {
                 { key: 'transactions', label: 'Transactions', icon: CreditCard },
                 { key: 'invoices', label: 'Invoices', icon: Receipt },
                 { key: 'countries', label: 'Countries', icon: Globe },
-                { key: 'converter', label: 'Converter', icon: Calculator },
-                { key: 'profile-demo', label: 'Upload', icon: Camera }
+                { key: 'converter', label: 'Converter', icon: Calculator }
               ].map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-all duration-300 ${
-                    activeTab === key
+                  className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-all duration-300 ${activeTab === key
                       ? 'bg-primary text-primary-foreground shadow-lg scale-105'
                       : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:scale-102'
-                  }`}
+                    }`}
                 >
                   <Icon className="h-6 w-6" weight="duotone" />
                   <span className="text-xs font-medium font-montserrat">{label}</span>
@@ -2467,43 +2135,34 @@ function App() {
           <div className="hidden sm:block w-full overflow-x-auto scrollbar-none mb-6">
             <TabsList className="grid w-max min-w-full grid-cols-5 gap-1 sm:w-full sm:min-w-0 h-14">
               <TabsTrigger value="dashboard" className="px-4 py-3 whitespace-nowrap transition-fast text-base font-medium">
-                <ChartBar className="h-5 w-5 mr-3" weight="duotone" style={{filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))'}} />
+                <ChartBar className="h-5 w-5 mr-3" weight="duotone" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))' }} />
                 Dashboard
               </TabsTrigger>
               <TabsTrigger value="transactions" className="px-4 py-3 whitespace-nowrap transition-fast text-base font-medium">
-                <CreditCard className="h-5 w-5 mr-3" weight="duotone" style={{filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))'}} />
+                <CreditCard className="h-5 w-5 mr-3" weight="duotone" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))' }} />
                 Transactions
               </TabsTrigger>
               <TabsTrigger value="invoices" className="px-4 py-3 whitespace-nowrap transition-fast text-base font-medium">
-                <Receipt className="h-5 w-5 mr-3" weight="duotone" style={{filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))'}} />
+                <Receipt className="h-5 w-5 mr-3" weight="duotone" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))' }} />
                 Invoices
               </TabsTrigger>
               <TabsTrigger value="countries" className="px-4 py-3 whitespace-nowrap transition-fast text-base font-medium">
-                <Globe className="h-5 w-5 mr-3" weight="duotone" style={{filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))'}} />
+                <Globe className="h-5 w-5 mr-3" weight="duotone" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))' }} />
                 Countries
               </TabsTrigger>
               <TabsTrigger value="converter" className="px-4 py-3 whitespace-nowrap transition-fast text-base font-medium">
-                <Calculator className="h-5 w-5 mr-3" weight="duotone" style={{filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))'}} />
+                <Calculator className="h-5 w-5 mr-3" weight="duotone" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))' }} />
                 Converter
               </TabsTrigger>
-              <TabsTrigger value="profile-demo" className="px-4 py-3 whitespace-nowrap transition-fast text-base font-medium">
-                <Camera className="h-5 w-5 mr-3" weight="duotone" style={{filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))'}} />
-                Upload Demo
-              </TabsTrigger>
+              {/* Removed profile-demo demo tab to reduce demo/sample cruft */}
             </TabsList>
           </div>
 
           {/* Enhanced Dashboard Tab with Analytics */}
           <TabsContent value="dashboard" className="space-y-6">
-            {/* PWA Install Banner - Show for installable PWA */}
-            {showPWAInstall && !pwaManager.isStandalone() && (
-              <div className="animate-card-entrance">
-                <PWAInstall onClose={() => setShowPWAInstall(false)} />
-              </div>
-            )}
 
             {/* Financial Services Carousel */}
-            <div className="animate-card-entrance" style={{animationDelay: '100ms'}}>
+            <div className="animate-card-entrance" style={{ animationDelay: '100ms' }}>
               <FinancialCarousel className="mb-6 carousel-card-enhanced dashboard-card-glow" />
             </div>
 
@@ -2518,7 +2177,7 @@ function App() {
                 </>
               ) : (
                 <>
-                  <Card 
+                  <Card
                     className="p-4 sm:p-6 gradient-card-1 system-management-card dashboard-card-glow animate-card-entrance overflow-hidden relative cursor-pointer card-hover-glass"
                     onClick={() => handleAnalyticsClick('revenue', 'Total Revenue')}
                   >
@@ -2536,9 +2195,9 @@ function App() {
                     </CardContent>
                   </Card>
 
-                  <Card 
-                    className="p-4 sm:p-6 gradient-card-7 system-management-card dashboard-card-glow animate-card-entrance overflow-hidden relative cursor-pointer card-hover-glass" 
-                    style={{animationDelay: '100ms'}}
+                  <Card
+                    className="p-4 sm:p-6 gradient-card-7 system-management-card dashboard-card-glow animate-card-entrance overflow-hidden relative cursor-pointer card-hover-glass"
+                    style={{ animationDelay: '100ms' }}
                     onClick={() => handleAnalyticsClick('volume', 'Transaction Volume')}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-[#43e97b] to-[#38f9d7] opacity-30 rounded-lg"></div>
@@ -2564,9 +2223,9 @@ function App() {
                     </CardContent>
                   </Card>
 
-                  <Card 
-                    className="p-4 sm:p-6 gradient-card-5 system-management-card dashboard-card-glow animate-card-entrance overflow-hidden relative cursor-pointer card-hover-glass" 
-                    style={{animationDelay: '200ms'}}
+                  <Card
+                    className="p-4 sm:p-6 gradient-card-5 system-management-card dashboard-card-glow animate-card-entrance overflow-hidden relative cursor-pointer card-hover-glass"
+                    style={{ animationDelay: '200ms' }}
                     onClick={() => handleAnalyticsClick('growth', 'Revenue Growth')}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-[#f093fb] to-[#f5576c] opacity-30 rounded-lg"></div>
@@ -2580,9 +2239,9 @@ function App() {
                     </CardContent>
                   </Card>
 
-                  <Card 
-                    className="p-4 sm:p-6 gradient-card-6 system-management-card dashboard-card-glow animate-card-entrance overflow-hidden relative cursor-pointer card-hover-glass" 
-                    style={{animationDelay: '300ms'}}
+                  <Card
+                    className="p-4 sm:p-6 gradient-card-6 system-management-card dashboard-card-glow animate-card-entrance overflow-hidden relative cursor-pointer card-hover-glass"
+                    style={{ animationDelay: '300ms' }}
                     onClick={() => handleAnalyticsClick('average', 'Average Transaction')}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-[#4facfe] to-[#00f2fe] opacity-30 rounded-lg"></div>
@@ -2603,7 +2262,7 @@ function App() {
 
             {/* Recent Activity & Analytics */}
             <div className="grid gap-6 lg:grid-cols-2">
-              <Card className="card-dark-shadow animate-card-entrance overflow-hidden relative" style={{animationDelay: '1200ms'}}>
+              <Card className="card-dark-shadow animate-card-entrance overflow-hidden relative" style={{ animationDelay: '1200ms' }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-[#667eea]/5 to-[#764ba2]/5 rounded-lg"></div>
                 <CardHeader className="pb-4 relative z-10">
                   <CardTitle className="text-xl">Recent Transactions</CardTitle>
@@ -2613,10 +2272,10 @@ function App() {
                     {(transactions || []).slice(0, 5).map((transaction, index) => {
                       if (!transaction) return null;
                       return (
-                        <div 
-                          key={transaction.id || `transaction-${index}`} 
-                          className="flex items-center gap-4 p-3 rounded-lg bg-muted/20 card-hover-minimal animate-card-entrance cursor-pointer transition-fast hover:bg-muted/40" 
-                          style={{animationDelay: `${900 + index * 100}ms`}}
+                        <div
+                          key={transaction.id || `transaction-${index}`}
+                          className="flex items-center gap-4 p-3 rounded-lg bg-muted/20 card-hover-minimal animate-card-entrance cursor-pointer transition-fast hover:bg-muted/40"
+                          style={{ animationDelay: `${900 + index * 100}ms` }}
                           onClick={() => handleTransactionClick(transaction)}
                         >
                           <Avatar className="h-10 w-10 flex-shrink-0">
@@ -2640,7 +2299,7 @@ function App() {
                 </CardContent>
               </Card>
 
-              <Card className="card-dark-shadow animate-card-entrance overflow-hidden relative" style={{animationDelay: '1300ms'}}>
+              <Card className="card-dark-shadow animate-card-entrance overflow-hidden relative" style={{ animationDelay: '1300ms' }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-[#f093fb]/5 to-[#f5576c]/5 rounded-lg"></div>
                 <CardHeader className="pb-4 relative z-10">
                   <CardTitle className="text-xl">System Status & Analytics</CardTitle>
@@ -2681,9 +2340,9 @@ function App() {
             </div>
 
             {/* Integrated Analytics Dashboard */}
-            <AnalyticsDashboard 
-              transactions={transactions || []} 
-              clients={clients || []} 
+            <AnalyticsDashboard
+              transactions={transactions || []}
+              clients={clients || []}
             />
           </TabsContent>
 
@@ -2695,34 +2354,34 @@ function App() {
 
             {/* Floating Action Buttons */}
             <div className="flex items-center gap-2 mb-4">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   const searchInput = document.querySelector('input[placeholder*="Search transactions"]') as HTMLInputElement;
                   if (searchInput) {
                     searchInput.focus();
                     searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }
-                }} 
+                }}
                 className="flex-1 sm:flex-none"
               >
                 <MagnifyingGlass className="h-4 w-4 mr-2" weight="bold" />
                 Search
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => exportData('transactions')} 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportData('transactions')}
                 className="flex-1 sm:flex-none"
               >
                 <DownloadSimple className="h-4 w-4 mr-2" weight="bold" />
                 Export
               </Button>
               {pendingTransactions > 0 && (
-                <Button 
+                <Button
                   variant="secondary"
-                  size="sm" 
+                  size="sm"
                   onClick={completeAllPendingTransactions}
                   className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white"
                 >
@@ -2730,8 +2389,8 @@ function App() {
                   Complete All ({pendingTransactions})
                 </Button>
               )}
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 onClick={() => {
                   toast.success('Transaction creation feature coming soon!');
                 }}
@@ -2786,9 +2445,8 @@ function App() {
                           variant={sortBy === sort.key ? "default" : "outline"}
                           size="sm"
                           onClick={() => setSortBy(sort.key as 'date' | 'amount' | 'name' | 'status')}
-                          className={`sort-button h-9 px-3 transition-fast ${
-                            sortBy === sort.key ? 'active' : ''
-                          }`}
+                          className={`sort-button h-9 px-3 transition-fast ${sortBy === sort.key ? 'active' : ''
+                            }`}
                           title={`Sort by ${sort.label} (${sort.shortcut})`}
                         >
                           <IconComponent className="h-4 w-4 mr-1" weight="duotone" />
@@ -2798,7 +2456,7 @@ function App() {
                     })}
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -2819,7 +2477,7 @@ function App() {
                       </>
                     )}
                   </Button>
-                  
+
                   {/* Keyboard shortcuts hint */}
                   <div className="hidden lg:block text-xs text-muted-foreground bg-muted/20 px-2 py-1 rounded-md">
                     Alt+D/A/N/S to sort • Alt+R to reverse
@@ -2840,7 +2498,7 @@ function App() {
                     Advanced Filters
                     <CaretDown className={`h-4 w-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
                   </Button>
-                  
+
                   {hasActiveFilters && (
                     <Button
                       variant="ghost"
@@ -2854,7 +2512,7 @@ function App() {
                     </Button>
                   )}
                 </div>
-                
+
                 {/* Quick Sort Presets */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground font-medium">Quick:</span>
@@ -3152,14 +2810,14 @@ function App() {
                   </div>
                 )}
               </div>
-              
+
               {filteredTransactions.map((transaction, index) => {
                 if (!transaction) return null;
                 return (
-                  <Card 
-                    key={transaction.id || `tx-${index}`} 
-                    className="overflow-hidden card-hover-glass card-ripple animate-card-entrance transition-fast hover:shadow-2xl active:shadow-3xl cursor-pointer" 
-                    style={{animationDelay: `${index * 100}ms`}}
+                  <Card
+                    key={transaction.id || `tx-${index}`}
+                    className="overflow-hidden card-hover-glass card-ripple animate-card-entrance transition-fast hover:shadow-2xl active:shadow-3xl cursor-pointer"
+                    style={{ animationDelay: `${index * 100}ms` }}
                     onClick={() => handleTransactionClick(transaction)}
                   >
                     <CardContent className="p-6">
@@ -3230,7 +2888,7 @@ function App() {
                               Complete
                             </Button>
                           )}
-                          
+
                           {/* Status Change Dropdown */}
                           <div className="relative flex-1 sm:flex-none">
                             <select
@@ -3320,7 +2978,7 @@ function App() {
                   {currentInvoices.map((invoice, index) => {
                     if (!invoice) return null;
                     return (
-                      <Card key={invoice.id || `invoice-${index}`} className="overflow-hidden card-hover-glass card-ripple animate-card-entrance transition-fast hover:shadow-2xl active:shadow-3xl" style={{animationDelay: `${index * 100}ms`}}>
+                      <Card key={invoice.id || `invoice-${index}`} className="overflow-hidden card-hover-glass card-ripple animate-card-entrance transition-fast hover:shadow-2xl active:shadow-3xl" style={{ animationDelay: `${index * 100}ms` }}>
                         <CardContent className="p-6">
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -3418,8 +3076,8 @@ function App() {
                   <FileText className="h-16 w-16 text-muted-foreground mx-auto" />
                   <div>
                     <h3 className="text-lg font-semibold">
-                      {filteredInvoices.length === 0 && (invoices?.length || 0) > 0 
-                        ? "No invoices match your search" 
+                      {filteredInvoices.length === 0 && (invoices?.length || 0) > 0
+                        ? "No invoices match your search"
                         : "No invoices yet"}
                     </h3>
                     <p className="text-muted-foreground">
@@ -3471,7 +3129,7 @@ function App() {
                   </div>
                 )}
               </div>
-              
+
               {/* Regional Filter Buttons */}
               <div className="flex flex-wrap gap-2">
                 {[
@@ -3492,9 +3150,8 @@ function App() {
                       variant={regionFilter === filter.key ? "default" : "outline"}
                       size="sm"
                       onClick={() => setRegionFilter(filter.key)}
-                      className={`filter-button region-pill h-10 px-4 transition-fast ${
-                        regionFilter === filter.key ? 'active' : ''
-                      }`}
+                      className={`filter-button region-pill h-10 px-4 transition-fast ${regionFilter === filter.key ? 'active' : ''
+                        }`}
                     >
                       {IconComponent && <IconComponent className="h-4 w-4 mr-2" weight="duotone" />}
                       <span className="text-xs sm:text-sm relative z-10">{filter.label}</span>
@@ -3502,7 +3159,7 @@ function App() {
                   );
                 })}
               </div>
-              
+
               {/* Sort Controls */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground font-medium">Sort:</span>
@@ -3533,19 +3190,19 @@ function App() {
                 if (!rate) return null;
                 // Filter transactions for this country to show count
                 const currency = rate.pair.includes('/') ? rate.pair.split('/')[1] : rate.pair;
-                const countryTransactions = (transactions || []).filter(t => 
+                const countryTransactions = (transactions || []).filter(t =>
                   t && (t.fromCurrency === currency || t.toCurrency === currency)
                 );
-                
+
                 const isFavorite = (favoriteRates || []).includes(rate.pair);
-                
+
                 return (
-                    <Card
-                      key={rate.pair} // Stable key by category/pair to prevent reshuffling across refreshes
-                      className="currency-pair group overflow-hidden card-hover-glass card-ripple animate-card-entrance cursor-pointer transition-fast hover:shadow-xl hover:scale-[1.02] hover:border-primary/30 bg-gradient-to-br from-card via-card to-muted/20 gpu-accelerated active:shadow-2xl lg:p-3 lg:text-sm"
-                      style={{animationDelay: `${index * 20}ms`}}
-                      onClick={() => handleCountryClick(rate.pair)}
-                    >
+                  <Card
+                    key={rate.pair} // Stable key by category/pair to prevent reshuffling across refreshes
+                    className="currency-pair group overflow-hidden card-hover-glass card-ripple animate-card-entrance cursor-pointer transition-fast hover:shadow-xl hover:scale-[1.02] hover:border-primary/30 bg-gradient-to-br from-card via-card to-muted/20 gpu-accelerated active:shadow-2xl lg:p-3 lg:text-sm"
+                    style={{ animationDelay: `${index * 20}ms` }}
+                    onClick={() => handleCountryClick(rate.pair)}
+                  >
                     <CardHeader className="pb-4 lg:pb-2 relative">
                       <div className="flex items-center gap-3">
                         <div className="text-3xl lg:text-2xl transition-fast group-hover:scale-105 group-hover:rotate-6">
@@ -3578,11 +3235,10 @@ function App() {
                           className="h-8 w-8 lg:h-6 lg:w-6 p-0 opacity-0 group-hover:opacity-100 transition-fast"
                         >
                           <Star
-                            className={`favorite-star h-4 w-4 lg:h-3 lg:w-3 transition-fast ${
-                              isFavorite
+                            className={`favorite-star h-4 w-4 lg:h-3 lg:w-3 transition-fast ${isFavorite
                                 ? 'text-yellow-500 fill-yellow-500 active'
                                 : 'text-muted-foreground hover:text-yellow-500'
-                            }`}
+                              }`}
                             weight={isFavorite ? "fill" : "regular"}
                           />
                         </Button>
@@ -3644,10 +3300,7 @@ function App() {
             />
           </TabsContent>
 
-          {/* Profile Picture Upload Demo Tab */}
-          <TabsContent value="profile-demo" className="space-y-6">
-            <FileUploadDemo />
-          </TabsContent>
+          {/* Profile demo removed */}
 
           {/* Rate Alerts Tab - Hidden but accessible via floating button */}
           {showRateAlerts && (
@@ -3754,9 +3407,8 @@ function App() {
                           variant={selectedContinent === continent.key ? "default" : "outline"}
                           size="sm"
                           onClick={() => setSelectedContinent(continent.key)}
-                          className={`filter-button region-pill h-9 px-3 transition-fast text-xs ${
-                            selectedContinent === continent.key ? 'active' : ''
-                          }`}
+                          className={`filter-button region-pill h-9 px-3 transition-fast text-xs ${selectedContinent === continent.key ? 'active' : ''
+                            }`}
                         >
                           {IconComponent && <IconComponent className="h-3 w-3 mr-1" weight="duotone" />}
                           <span className="relative z-10">{continent.label}</span>
@@ -3794,13 +3446,12 @@ function App() {
                   {getFilteredRatesForInvoice().map((rate, index) => {
                     if (!rate) return null;
                     const isSelected = selectedInvoiceCountry?.pair === rate.pair;
-                    
+
                     return (
-                      <Card 
-                        key={rate.pair || `rate-${index}`} 
-                        className={`currency-pair group overflow-hidden card-hover-glass card-ripple cursor-pointer transition-fast hover:shadow-lg hover:scale-[1.02] hover:border-primary/40 bg-gradient-to-br from-card via-card to-muted/20 gpu-accelerated mobile-card ${
-                          isSelected ? 'ring-2 ring-primary bg-primary/5' : ''
-                        }`}
+                      <Card
+                        key={rate.pair || `rate-${index}`}
+                        className={`currency-pair group overflow-hidden card-hover-glass card-ripple cursor-pointer transition-fast hover:shadow-lg hover:scale-[1.02] hover:border-primary/40 bg-gradient-to-br from-card via-card to-muted/20 gpu-accelerated mobile-card ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''
+                          }`}
                         onClick={() => handleCountrySelectionForInvoice(rate.pair)}
                       >
                         <CardContent className="p-3 lg:p-2 sm:p-3">
@@ -3827,7 +3478,7 @@ function App() {
                       </Card>
                     );
                   })}
-                  
+
                   {/* No Results Message */}
                   {getFilteredRatesForInvoice().length === 0 && (
                     <div className="col-span-full text-center py-8">

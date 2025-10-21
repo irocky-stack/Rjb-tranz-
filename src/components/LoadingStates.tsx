@@ -1,12 +1,7 @@
  import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { 
-  DollarSign, 
-  Users, 
-  Activity, 
-  Banknote,
-  Loader2,
-  TrendingUp
+import {
+  Loader2
 } from "lucide-react";
 
 // Professional loading skeleton for metric cards

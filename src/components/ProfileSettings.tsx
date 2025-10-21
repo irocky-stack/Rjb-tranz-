@@ -45,7 +45,7 @@ const defaultProfile: UserProfile = {
   email: 'admin@rjbtranz.com',
   phone: '+233-123-456-789',
   location: 'Accra, Ghana',
-  bio: 'System Administrator at RJB TRANZ',
+  bio: 'System Administrator at <strong className="font-bold">RJB TRANZ</strong>',
   role: 'Administrator',
   joinDate: new Date().toISOString(),
   lastActive: new Date().toISOString(),
@@ -99,7 +99,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         description: 'Your profile information has been saved.',
       });
       
-    } catch (error) {
+    } catch {
       toast.error('Failed to update profile', {
         description: 'Please try again later.',
       });
