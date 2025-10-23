@@ -15,16 +15,16 @@ Your RJB TRANZ CRM system now has a complete Supabase integration with the follo
 
 ### 🗄️ Database Schema
 
-**8 Main Tables Created:**
-- `users` - System users with role-based access
-- `countries` - Country data with flags and currencies (70+ countries)
-- `clients` - Customer information and verification
-- `transactions` - Complete remittance transaction data
-- `invoices` - Multi-step invoice creation and management
-- `exchange_rates` - Live exchange rates with change tracking
-- `system_configs` - Application configuration settings
-- `audit_logs` - System activity tracking
-- `printer_logs` - Printing activity logs
+**9 Main Tables Created:**
+- `users` - System users with role-based access (admin/operator/viewer)
+- `countries` - Country data with flags, currencies, and phone codes
+- `clients` - Customer information, verification status, and transaction history
+- `transactions` - Complete remittance transaction data with sender/receiver details
+- `invoices` - Multi-step invoice creation and management with payment tracking
+- `exchange_rates` - Live exchange rates with change tracking and history
+- `system_configs` - Application configuration settings (per-user and global)
+- `audit_logs` - Complete system activity tracking for compliance
+- `printer_logs` - Receipt printing history and error tracking
 
 ### 🔧 Key Features
 
@@ -74,7 +74,7 @@ const { isConnected, connectionStatus, testConnection } = useSupabaseConnection(
 ## 🚀 Next Steps to Complete Setup
 
 ### Step 1: Run Database Schema
-1. Open your Supabase dashboard: https://ijnskyrnmoyhtmfdazdk.supabase.co
+1. Open your Supabase dashboard: https://zjhgiggdswldmvzbtipr.supabase.co
 2. Go to SQL Editor
 3. Copy and paste the entire `supabase_schema.sql` file
 4. Click "Run" to execute the schema
@@ -104,12 +104,12 @@ The Supabase integration includes mobile-specific optimizations:
 
 ## 🔒 Security Features
 
-- **Row Level Security (RLS)** ready for implementation
-- **Password hashing** using bcrypt
+- **Row Level Security (RLS)** currently DISABLED for admin-side CRM simplicity
 - **UUID primary keys** for enhanced security
 - **Input validation** at database level
-- **Audit logging** for compliance
-- **Role-based access control**
+- **Audit logging** for compliance tracking
+- **Role-based access control** framework ready (users table)
+- **RLS can be enabled** when implementing multi-user authentication
 
 ## 📊 Analytics & Reporting
 

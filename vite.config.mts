@@ -1,9 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
-import { defineConfig, PluginOption } from "vite";
+import { defineConfig } from "vite";
 
-import sparkPlugin from "@github/spark/spark-vite-plugin";
-import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
@@ -13,11 +11,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // Temporarily disable GitHub Spark plugins in development to prevent CORS issues
-    ...(process.env.NODE_ENV === 'development' ? [] : [
-      createIconImportProxy() as PluginOption,
-      sparkPlugin() as PluginOption,
-    ]),
+
   ],
   build: {
     outDir: 'dist',
@@ -30,7 +24,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: true,
+    strictPort: false,
+    host: '0.0.0.0',
   },
   // Ensure relative asset paths when packaged under Electron (file://)
   base: './',
@@ -40,6 +35,6 @@ export default defineConfig({
     }
   },
   preview: {
-    allowedHosts: ['rjb-tranz-remittance.onrender.com']
-  }
+    allowedHosts: ['localhost'] // Or ['localhost', '127.0.0.1']
+  },
 });

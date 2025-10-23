@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Bell, CheckCircle, AlertTriangle, XCircle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
-import { useKV } from '@github/spark/hooks';
 
 interface Transaction {
   id: string;
@@ -28,7 +27,7 @@ export default function NotificationManager({ transactions }: NotificationManage
   const [previousTransactions, setPreviousTransactions] = useState<Transaction[]>([]);
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [notificationSettings, setNotificationSettings] = useKV<NotificationSettings>('notification-settings', {
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     newTransactions: true,
     statusUpdates: true,
     failedTransactions: true,

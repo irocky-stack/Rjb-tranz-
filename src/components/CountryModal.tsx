@@ -115,38 +115,10 @@ const CountryModal: React.FC<CountryModalProps> = ({
     currency: country.currency,
     phoneNumber: ''
   });
-  const [senderCurrency, setSenderCurrency] = useState<string>('USD');
-  const [receiverCurrency, setReceiverCurrency] = useState<string>('GHS'); // Default to GHS for Ghana
+  const [senderCurrency, setSenderCurrency] = useState<string>(country.currency); // Only sender currency is needed initially
+  const [receiverCurrency, setReceiverCurrency] = useState<string>(''); // This will be set in the receiver info step
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  
-  // Sync sender and receiver currencies when transaction type changes
-  useEffect(() => {
-    if (transactionType === 'send') {
-      setSenderCurrency('USD');
-      setReceiverCurrency('GHS'); // Default to GHS for Ghana
-    } else {
-      setSenderCurrency('GHS'); // Default to GHS for Ghana
-      setReceiverCurrency('USD');
-    }
-    // Reset fee and D2D toggle when transaction type changes
-    setCustomFee(null);
-    setIsDollarToDollar(false);
-    // Update formData currency to use sender's currency for send transactions
-    setFormData(prev => ({
-      ...prev,
-      currency: transactionType === 'send' ? 'USD' : 'USD' // For receive, also use USD as receiver currency
-    }));
-  }, [transactionType]);
 
-  // Check if transaction is Dollar to Dollar
-  useEffect(() => {
-    const d2d = senderCurrency === 'USD' && receiverCurrency === 'USD';
-    setIsDollarToDollar(d2d);
-    // Reset custom fee when currencies change
-    if (!d2d) {
-      setCustomFee(null);
-    }
-  }, [senderCurrency, receiverCurrency]);
   const [receiverInfo, setReceiverInfo] = useState({
     fullName: '',
     email: '',
@@ -154,8 +126,42 @@ const CountryModal: React.FC<CountryModalProps> = ({
     country: '',
     currency: ''
   });
+
+   // When the modal opens for a country, or when transaction type changes, reset currencies.
+   useEffect(() => {
+     // Default sender currency to the country of the modal.
+     const defaultSenderCurrency = country.currency;
+     setSenderCurrency(defaultSenderCurrency);
+
+     // Receiver currency is no longer needed in the first step.
+     setReceiverCurrency('');
+
+     if (transactionType === 'send') {
+       // For a 'send' transaction, the amount is entered in the sender's currency.
+       setFormData(prev => ({ ...prev, currency: defaultSenderCurrency }));
+     }
+     // No 'else' block needed if 'receive' flow starts differently
+   }, [country.currency, transactionType]);
+
+   // This is the new request from the user.
+   // "on session time out anywhere clicked reverts carousel"
+   // I'm interpreting "session time out" as the modal being open for a while, and "reverts carousel" as going back to the overview step.
+   // A simple way to handle this is to reset to overview if the user clicks the backdrop.
+   const handleBackdropClick = () => {
+     handleBackToOverview();
+     onClose(); // Also close the modal as is the standard behavior for backdrop click.
+   };
+   // Check if transaction is Dollar to Dollar
+   useEffect(() => {
+     const d2d = senderCurrency === 'USD' && receiverInfo.currency === 'USD';
+     setIsDollarToDollar(d2d);
+     // Reset custom fee when currencies change
+     if (!d2d) {
+       setCustomFeePercent(null);
+     }
+   }, [senderCurrency, receiverInfo.currency]);
   const [customExchangeRate, setCustomExchangeRate] = useState<number | null>(null);
-  const [customFee, setCustomFee] = useState<number | null>(null);
+  const [customFeePercent, setCustomFeePercent] = useState<number | null>(null);
   const [isDollarToDollar, setIsDollarToDollar] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'failed' | 'cancelled'>('all');
 
@@ -262,13 +268,16 @@ const CountryModal: React.FC<CountryModalProps> = ({
       const uniqueCode = generateUniqueCode();
       const formatId = generateTransactionId(formData.currency, formData.phoneNumber);
       
-      const calculatedFee = customFee !== null ? customFee : (isDollarToDollar ? 0 : parseFloat(formData.amount) * 0.05);
+      const amount = parseFloat(formData.amount);
+      const calculatedFee = customFeePercent !== null
+        ? amount * (customFeePercent / 100)
+        : (isDollarToDollar ? 0 : amount * 0.05);
 
       const newTransaction: Transaction = {
         id: `TXN-${Date.now()}`,
         clientName: formData.fullName,
         clientEmail: formData.email || '',
-        amount: parseFloat(formData.amount),
+        amount: parseFloat(formData.amount), // Amount is in sender currency
         fromCurrency: senderCurrency,
         toCurrency: receiverCurrency,
         exchangeRate: country.rate.rate * 1.05,
@@ -328,16 +337,19 @@ const CountryModal: React.FC<CountryModalProps> = ({
       const uniqueCode = generateUniqueCode();
       const formatId = generateTransactionId(formData.currency, formData.phoneNumber);
       
-      const calculatedFee = customFee !== null ? customFee : (isDollarToDollar ? 0 : parseFloat(formData.amount) * 0.05);
+      const amount = parseFloat(formData.amount);
+      const calculatedFee = customFeePercent !== null
+        ? amount * (customFeePercent / 100)
+        : (isDollarToDollar ? 0 : amount * 0.05);
 
       const newTransaction: Transaction = {
         id: `TXN-${Date.now()}`,
         clientName: formData.fullName,
         clientEmail: formData.email || '',
-        amount: parseFloat(formData.amount),
+        amount: parseFloat(formData.amount), // Amount is in sender currency
         fromCurrency: senderCurrency,
         toCurrency: receiverCurrency,
-        exchangeRate: country.rate.rate * 1.05,
+        exchangeRate: country.rate.rate,
         fee: calculatedFee,
         status: 'pending',
         createdAt: new Date().toISOString(),
@@ -1035,7 +1047,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
                         <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-6">
                           <div class="text-center mb-8">
                             <h2 class="text-2xl font-bold text-gray-800 mb-4">
-                              You just sent money to ${country.name} ${country.flag}
+                              You just sent money to ${country?.name || 'Unknown Country'} ${country?.flag || ''}
                             </h2>
                             <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
                               <p class="text-blue-800 font-semibold">
@@ -1549,7 +1561,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
         </div>
 
         {/* Amount and Currencies - Mandatory */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Amount <span className="text-red-500">*</span>
@@ -1566,18 +1578,20 @@ const CountryModal: React.FC<CountryModalProps> = ({
             />
           </div>
 
-          {/* Receiver Currency */}
+          {/* Sender Currency */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              Receiver Currency <span className="text-red-500">*</span>
+              Sender Currency <span className="text-red-500">*</span>
             </label>
             <select
-              value={receiverCurrency}
-              onChange={(e) => setReceiverCurrency(e.target.value)}
+              value={senderCurrency}
+              onChange={(e) => {
+                setSenderCurrency(e.target.value);
+              }}
               className="h-12 px-3 border rounded-md bg-muted/50 w-full"
             >
               {availableCurrencies.map((c) => (
-                <option key={`receiver-${c}`} value={c}>{c}</option>
+                <option key={`sender-${c}`} value={c}>{c}</option>
               ))}
             </select>
           </div>
@@ -1608,7 +1622,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
               </div>
               <div>
                 <span className="text-muted-foreground">Exchange Rate:</span>
-                <div className="font-mono">{(getRateForPair(senderCurrency, receiverCurrency)).toFixed(4)}</div>
+                <div className="font-mono text-muted-foreground">(Set in next step)</div>
               </div>
               <div>
                 <span className="text-muted-foreground">Amount:</span>
@@ -1619,25 +1633,30 @@ const CountryModal: React.FC<CountryModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
-                    value={customFee !== null ? customFee : (isDollarToDollar ? 0 : (formData.amount ? parseFloat(formData.amount) * 0.05 : 0))}
+                    value={customFeePercent !== null ? customFeePercent : (isDollarToDollar ? 0 : 5)}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value);
-                      setCustomFee(isNaN(value) ? null : value);
+                      if (!isNaN(value) && value >= 0 && value <= 10.00) {
+                        // Only allow setting fee if not a D2D transaction
+                        if (!isDollarToDollar) setCustomFeePercent(value);
+                      } else if (e.target.value === '') {
+                        setCustomFeePercent(null);
+                      }
                     }}
                     className="font-mono w-20 h-8 text-sm"
                     step="0.01"
                     min="0"
-                    placeholder={isDollarToDollar ? "0.00" : "0.00"}
+                    max="10.00"
+                    placeholder="5"
+                    disabled={isDollarToDollar}
                   />
-                  <span className="text-xs text-muted-foreground">
-                    {isDollarToDollar ? "(D2D)" : ""}
-                  </span>
+                  <span className="text-xs text-muted-foreground">%</span>
                 </div>
               </div>
             </div>
 
             {/* Dollar to Dollar Toggle */}
-            {senderCurrency === 'USD' && receiverCurrency === 'USD' && (
+            {senderCurrency === 'USD' && (
               <div className="flex items-center justify-between pt-2 border-t border-primary/10">
                 <span className="text-sm font-medium">Dollar to Dollar (D2D)</span>
                 <div className="flex items-center gap-2">
@@ -1647,8 +1666,14 @@ const CountryModal: React.FC<CountryModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setIsDollarToDollar(!isDollarToDollar);
-                      setCustomFee(null); // Reset custom fee when toggling
+                      const newD2DState = !isDollarToDollar;
+                      setIsDollarToDollar(newD2DState);
+                      // When toggling D2D, reset the fee.
+                      if (newD2DState) {
+                        setCustomFeePercent(0);
+                      } else {
+                        setCustomFeePercent(null);
+                      }
                     }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
                       isDollarToDollar ? 'bg-green-600' : 'bg-gray-200'
@@ -1734,7 +1759,7 @@ const CountryModal: React.FC<CountryModalProps> = ({
   return (
     <div
       className="modal-backdrop"
-      onClick={onClose}
+      onClick={handleBackdropClick}
     >
       <Card
         className="modal-content bg-card backdrop-blur-none border-2 border-primary/20 animate-scale-in shadow-2xl mobile-modal country-modal-scale overflow-y-auto"
@@ -2140,3 +2165,5 @@ const CountryModal: React.FC<CountryModalProps> = ({
 };
 
 export default CountryModal;
+
+

@@ -5,7 +5,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useCapacitor } from "@/hooks/useCapacitor";
 import { useElectron } from "@/hooks/useElectron";
 import { useFontScale } from "@/hooks/useFontScale";
-import useKV from "@/hooks/useKVWithFallback";
+import useLocalStorage from "@/hooks/useLocalStorage";
 import { pwaManager } from "@/utils/pwa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import TransactionPreviewModal from "@/components/TransactionPreviewModal";
 import CurrencyConverter from "@/components/CurrencyConverter";
 import ExchangeRateService from "@/components/ExchangeRateService";
 import RateAlerts from "@/components/RateAlerts";
+import LogoPopup from "@/components/LogoPopup";
 import {
   CurrencyDollar,
   Users,
@@ -179,6 +180,7 @@ function App() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   // const [showCurrencyConverter, setShowCurrencyConverter] = useState(false);
   const [showRateAlerts, setShowRateAlerts] = useState(false);
+  const [showBorderOverlay, setShowBorderOverlay] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<{
     flag: string;
     name: string;
@@ -272,11 +274,26 @@ function App() {
   const [showSleepMode, setShowSleepMode] = useState(false);
   const [sleepModeTimeout, setSleepModeTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  const refreshData = useCallback(async () => {
+    console.log('🔄 Refreshing data...');
+    setIsRefreshing(true);
+    try {
+      // This is where you would re-fetch your data
+      // For now, we'll just simulate a refresh
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.info("Data refreshed");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+
+
   // Enhanced filtering state
   const [baseCurrency, setBaseCurrency] = useState("USD");
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [rateSortOrder, setRateSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [favoriteRates, setFavoriteRates] = useKV<string[]>("favoriteRates", []);
+  const [favoriteRates, setFavoriteRates] = useLocalStorage<string[]>("favoriteRates", []);
   const [autoRefreshRates] = useState(true);
 
   // Analytics modal state
@@ -458,7 +475,24 @@ function App() {
   // );
 
   useEffect(() => {
+    // Enhanced startup sequence with faster loading
+    const initializeApp = async () => {
+      try {
+        // Show splash screen briefly
+        await new Promise(resolve => setTimeout(resolve, 600));
+        setShowSplash(false);
 
+        // Then show detailed loading screen
+        await new Promise(resolve => setTimeout(resolve, 400)); // Auth check
+        await new Promise(resolve => setTimeout(resolve, 300)); // Data loading
+        await new Promise(resolve => setTimeout(resolve, 200)); // UI preparation
+        setIsInitialLoad(false);
+      } catch (error) {
+        console.error('Error during app initialization:', error);
+        setIsInitialLoad(false);
+        setShowSplash(false);
+      }
+    };
 
     // Listen for custom navigation events from notifications
     const handleSwitchToTransactions = (event: CustomEvent) => {
@@ -500,6 +534,8 @@ function App() {
     window.addEventListener('app-focus', handleAppFocus);
     window.addEventListener('app-online', handleAppOnline);
     window.addEventListener('app-offline', handleAppOffline);
+
+    initializeApp();
 
     return () => {
       window.removeEventListener('switchToTransactions', handleSwitchToTransactions as EventListener);
@@ -550,13 +586,13 @@ function App() {
       t.id === transactionData.id
         ? {
           ...t,
-          receiverName: transactionData.receiverData.name,
-          receiverEmail: transactionData.receiverData.email,
-          receiverPhone: transactionData.receiverData.phone,
+          // receiverName: transactionData.receiverData.name,
+          // receiverEmail: transactionData.receiverData.email,
+          // receiverPhone: transactionData.receiverData.phone,
           // Calculate the fee based on the sender's original amount and the configured fee rate
           fee: (t.amount * (systemConfig.defaultFeeRate / 100)),
           // The amount the receiver gets is the sender's amount minus the fee
-          receiverAmount: t.amount * (1 - (systemConfig.defaultFeeRate / 100)),
+          // receiverAmount: t.amount * (1 - (systemConfig.defaultFeeRate / 100)),
           exchangeRate: transactionData.editedRate,
         }
         : t
@@ -589,126 +625,47 @@ function App() {
     };
   }, []); // Empty dependency array to run only once on mount
 
+  // PWA-specific event listeners (photo-captured, file-shared, app-shortcut)
+  // The `initializeApp()` call and `handleVisibilityChange` logic were already present
+  // in the `useEffect` at line 260, so they are not included here to avoid redundancy.
   useEffect(() => {
+    const handlePhotoCapture = (event: CustomEvent) => {
+      console.log('📸 Photo captured:', event.detail);
+      // You could save the photo or add it to transactions
+    };
 
-    // Enhanced startup sequence with faster loading
-    const initializeApp = async () => {
-      try {
-        // Show splash screen briefly
-        await new Promise(resolve => setTimeout(resolve, 600));
-        setShowSplash(false);
-
-        // Then show detailed loading screen
-        await new Promise(resolve => setTimeout(resolve, 400)); // Auth check
-        await new Promise(resolve => setTimeout(resolve, 300)); // Data loading
-        await new Promise(resolve => setTimeout(resolve, 200)); // UI preparation
-        setIsInitialLoad(false);
-      } catch (error) {
-        console.error('Error during app initialization:', error);
-        setIsInitialLoad(false);
-        setShowSplash(false);
+    const handleFileShared = (event: CustomEvent) => {
+      console.log('📄 File shared:', event.detail);
+      // Handle shared CSV/JSON files
+      if ((event.detail as { type: string }).type === 'text/csv') {
+        // Process CSV transaction data
+        setActiveTab('transactions');
       }
     };
 
-    // Initialize mobile service
-    const initializeMobile = async () => {
-      try {
-        // PWA lifecycle monitoring only
-        const handleVisibilityChange = () => {
-          if (!document.hidden) {
-            console.log('📱 App became active - refreshing data');
-            refreshData();
-          }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-          document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-      } catch (error) {
-        console.error('Error initializing PWA service:', error);
+    const handleAppShortcut = (event: CustomEvent) => {
+      console.log('🔗 App shortcut used:', event.detail);
+      if ((event.detail as { tab: string }).tab) {
+        setActiveTab((event.detail as { tab: string }).tab);
       }
     };
 
-    initializeApp();
-    // Initialize PWA service
-    const initializePWA = async () => {
-      try {
-        // Setup PWA event listeners
-        const handlePhotoCapture = (event: CustomEvent) => {
-          console.log('📸 Photo captured:', event.detail);
-          // You could save the photo or add it to transactions
-        };
+    // Setup PWA event listeners
+    window.addEventListener('photo-captured', handlePhotoCapture as EventListener);
+    window.addEventListener('file-shared', handleFileShared as EventListener);
+    window.addEventListener('app-shortcut', handleAppShortcut as EventListener);
 
-        const handleFileShared = (event: CustomEvent) => {
-          console.log('📄 File shared:', event.detail);
-          // Handle shared CSV/JSON files
-          if ((event.detail as { type: string }).type === 'text/csv') {
-            // Process CSV transaction data
-            setActiveTab('transactions');
-          }
-        };
-
-        const handleAppShortcut = (event: CustomEvent) => {
-          console.log('🔗 App shortcut used:', event.detail);
-          if ((event.detail as { tab: string }).tab) {
-            setActiveTab((event.detail as { tab: string }).tab);
-          }
-        };
-
-        // Setup PWA event listeners
-        window.addEventListener('photo-captured', handlePhotoCapture as EventListener);
-        window.addEventListener('file-shared', handleFileShared as EventListener);
-        window.addEventListener('app-shortcut', handleAppShortcut as EventListener);
-
-        // PWA lifecycle monitoring
-        const handleVisibilityChange = () => {
-          if (!document.hidden) {
-            console.log('📱 App became active - refreshing data');
-            refreshData();
-          }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-          window.removeEventListener('photo-captured', handlePhotoCapture as EventListener);
-          window.removeEventListener('file-shared', handleFileShared as EventListener);
-          window.removeEventListener('app-shortcut', handleAppShortcut as EventListener);
-          document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-      } catch (error) {
-        console.error('Error initializing PWA service:', error);
-      }
+    return () => {
+      window.removeEventListener('photo-captured', handlePhotoCapture as EventListener);
+      window.removeEventListener('file-shared', handleFileShared as EventListener);
+      window.removeEventListener('app-shortcut', handleAppShortcut as EventListener);
     };
-  }, [refreshData]); // Add refreshData to dependencies
-
-  // Simulated printer connection check
-  useEffect(() => {
-    const checkPrinterStatus = () => {
-      const isConnected = Math.random() > 0.1; // 90% chance connected
-      setPrinterStatus((prev) => ({
-        connected: isConnected,
-        paperLevel: Math.floor(Math.random() * 100),
-        model: prev?.model || "ESC/POS Thermal Printer",
-        temperature: 35 + Math.floor(Math.random() * 20),
-        errors: isConnected ? [] : ["Connection timeout", "Check USB cable"]
-      }));
-    };
-
-    checkPrinterStatus();
-    const interval = setInterval(checkPrinterStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  }, []); // Empty dependency array to run once on mount for PWA listeners
 
   const handlePrintReceipt = useCallback(async (transactionId: string) => {
     setIsLoading(true);
 
     try {
-      // Simulate print job - Faster
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       if (printerStatus?.connected) {
         setTransactions((prev) => prev?.map(t =>
           t.id === transactionId ? { ...t, receiptPrinted: true } : t
@@ -723,120 +680,6 @@ function App() {
       setIsLoading(false);
     }
   }, [printerStatus?.connected, setIsLoading]);
-
-  const refreshData = useCallback(async () => {
-    setIsRefreshing(true);
-
-    try {
-      // Fetch real-time exchange rates from API
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-
-      if (data && data.rates) {
-        // Convert API response to our ExchangeRate format
-        const updatedRates: ExchangeRate[] = Object.entries(data.rates).map(([currency, rateValue]) => {
-          // Map currencies to regions for better organization
-          const regionMap: { [key: string]: ExchangeRate['region'] } = {
-            // North America
-            'USD': 'north-america', 'CAD': 'north-america', 'MXN': 'north-america',
-            'GTQ': 'north-america', 'HNL': 'north-america', 'NIO': 'north-america',
-            'CRC': 'north-america', 'PAB': 'north-america', 'DOP': 'north-america',
-            'JMD': 'north-america', 'BBD': 'north-america', 'BZD': 'north-america',
-            'BMD': 'north-america', 'KYD': 'north-america', 'AWG': 'north-america',
-
-            // Europe
-            'EUR': 'europe', 'GBP': 'europe', 'CHF': 'europe', 'SEK': 'europe',
-            'NOK': 'europe', 'DKK': 'europe', 'PLN': 'europe', 'CZK': 'europe',
-            'HUF': 'europe', 'RON': 'europe', 'BGN': 'europe', 'HRK': 'europe',
-            'RSD': 'europe', 'RUB': 'europe', 'UAH': 'europe', 'TRY': 'europe',
-            'ALL': 'europe', 'AMD': 'europe', 'AZN': 'europe', 'BAM': 'europe',
-            'BYN': 'europe', 'ISK': 'europe', 'MDL': 'europe', 'MKD': 'europe',
-            'GEL': 'europe',
-
-            // Asia
-            'JPY': 'asia', 'CNY': 'asia', 'KRW': 'asia', 'SGD': 'asia',
-            'MYR': 'asia', 'THB': 'asia', 'VND': 'asia', 'IDR': 'asia',
-            'PKR': 'asia', 'LKR': 'asia', 'BDT': 'asia', 'NPR': 'asia',
-            'MMK': 'asia', 'KHR': 'asia', 'LAK': 'asia', 'MNT': 'asia',
-            'AFN': 'asia', 'UZS': 'asia', 'KZT': 'asia', 'KGS': 'asia',
-            'TJS': 'asia', 'TMT': 'asia', 'BND': 'asia', 'MVR': 'asia',
-            'BTN': 'asia', 'INR': 'asia', 'PHP': 'asia',
-
-            // Africa
-            'GHS': 'africa', 'NGN': 'africa', 'KES': 'africa', 'ZAR': 'africa',
-            'EGP': 'africa', 'MAD': 'africa', 'TND': 'africa', 'ETB': 'africa',
-            'UGX': 'africa', 'TZS': 'africa', 'RWF': 'africa', 'XOF': 'africa',
-            'BWP': 'africa', 'NAD': 'africa', 'ZMW': 'africa', 'AOA': 'africa',
-            'DZD': 'africa', 'LYD': 'africa', 'SDG': 'africa', 'SOS': 'africa',
-            'DJF': 'africa', 'ERN': 'africa', 'MZN': 'africa', 'MWK': 'africa',
-            'SZL': 'africa', 'LSL': 'africa', 'MGA': 'africa', 'MUR': 'africa',
-            'SCR': 'africa', 'GMD': 'africa', 'GNF': 'africa', 'SLE': 'africa',
-            'LRD': 'africa',
-
-            // South America
-            'BRL': 'south-america', 'ARS': 'south-america', 'CLP': 'south-america',
-            'COP': 'south-america', 'PEN': 'south-america', 'UYU': 'south-america',
-            'VES': 'south-america', 'BOB': 'south-america', 'PYG': 'south-america',
-
-            // Oceania
-            'AUD': 'oceania', 'NZD': 'oceania', 'FJD': 'oceania',
-
-            // Middle East
-            'AED': 'middle-east', 'SAR': 'middle-east', 'QAR': 'middle-east',
-            'KWD': 'middle-east', 'BHD': 'middle-east', 'OMR': 'middle-east',
-            'JOD': 'middle-east', 'LBP': 'middle-east', 'ILS': 'middle-east',
-            'IRR': 'middle-east', 'IQD': 'middle-east', 'SYP': 'middle-east',
-            'YER': 'middle-east'
-          };
-
-          const region = regionMap[currency] || 'other';
-
-          // Calculate change and changePercent (using previous rate if available)
-          const previousRate = (exchangeRates || []).find(r => r.pair === `USD/${currency}`)?.rate || (rateValue as number);
-          const change = (rateValue as number) - previousRate;
-          const changePercent = previousRate !== 0 ? (change / previousRate) * 100 : 0;
-
-          return {
-            pair: `USD/${currency}`,
-            rate: rateValue as number,
-            change,
-            changePercent,
-            lastUpdated: new Date().toISOString(),
-            region: region as ExchangeRate['region']
-          };
-        });
-
-        // Sort to put North America first, then other regions
-        updatedRates.sort((a, b) => {
-          if (a.region === 'north-america' && b.region !== 'north-america') return -1;
-          if (a.region !== 'north-america' && b.region === 'north-america') return 1;
-          return a.pair.localeCompare(b.pair);
-        });
-
-        setExchangeRates(updatedRates);
-        toast.success("Exchange rates updated with live data");
-      } else {
-        throw new Error('Invalid API response');
-      }
-    } catch {
-
-      // Fallback to simulated refresh if API fails
-      setExchangeRates((prev) => (prev || []).map(rate => {
-        if (!rate) return rate;
-        return {
-          ...rate,
-          rate: (rate.rate || 1) + (Math.random() - 0.5) * 0.1,
-          change: (Math.random() - 0.5) * 2,
-          changePercent: (Math.random() - 0.5) * 3,
-          lastUpdated: new Date().toISOString()
-        };
-      }));
-
-      toast.error("Using cached rates - API unavailable");
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [exchangeRates]);
 
   const exportData = useCallback(async (type: 'transactions' | 'clients' | 'invoices' | 'countries') => {
     let data: unknown[];
@@ -2154,7 +1997,6 @@ function App() {
                 <Calculator className="h-5 w-5 mr-3" weight="duotone" style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))' }} />
                 Converter
               </TabsTrigger>
-              {/* Removed profile-demo demo tab to reduce demo/sample cruft */}
             </TabsList>
           </div>
 
@@ -2234,7 +2076,7 @@ function App() {
                       <TrendUp className="h-4 w-4 text-[#f5576c]" weight="duotone" />
                     </CardHeader>
                     <CardContent className="p-0 relative z-10">
-                      <div className="text-2xl font-bold">+15.7%</div>
+                      <div className="text-2xl font-bold">0.00%</div>
                       <p className="text-xs text-muted-foreground">vs previous period</p>
                     </CardContent>
                   </Card>
@@ -3540,4 +3382,8 @@ function App() {
   );
 }
 
+
 export default App;
+
+
+

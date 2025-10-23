@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { useKV } from '@github/spark/hooks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -39,7 +38,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   size = 'md',
   showControls = true
 }) => {
-  const [profileImage, setProfileImage] = useKV<string | null>('user-profile-image', null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);

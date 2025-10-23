@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useKV } from "@github/spark/hooks";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,15 +50,15 @@ interface PrinterStatus {
 }
 
 const PrinterManager: React.FC = () => {
-  const [printerStatus, setPrinterStatus] = useKV<PrinterStatus>("printerStatus", {
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatus>({
     connected: false,
     paperLevel: 0,
     model: "ESC/POS Thermal Printer",
     temperature: 0,
     errors: []
   });
-  
-  const [printQueue, setPrintQueue] = useKV<PrintJob[]>("printQueue", []);
+
+  const [printQueue, setPrintQueue] = useState<PrintJob[]>([]);
   const [isTestPrinting, setIsTestPrinting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
@@ -167,7 +166,7 @@ const PrinterManager: React.FC = () => {
         toCurrency: "GHS",
         exchangeRate: 12.45,
         fee: 5,
-        status: "completed",
+        status: "completed" as const,
         createdAt: new Date().toISOString()
       };
 

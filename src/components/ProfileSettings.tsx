@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,7 +56,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   currentUser,
   onUserUpdate
 }) => {
-  const [userProfile, setUserProfile] = useKV<UserProfile>('user-profile', {
+  const [userProfile, setUserProfile] = useState<UserProfile>({
     ...defaultProfile,
     displayName: currentUser || 'Admin User'
   });

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useKV } from "@github/spark/hooks";
+import React, { useState, useEffect } from "react";
+import { supabase } from '@/lib/supabase';
 import {
   Card,
   CardContent,
@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import DataMigration from "@/components/DataMigration";
-
 import PrinterManager from "@/components/PrinterManager";
 import {
   ArrowLeft,
@@ -40,22 +39,9 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { useElectron } from "@/hooks/useElectron";
 
-// Declare global spark interface
-declare global {
-  interface Window {
-    spark: {
-      kv: {
-        keys: () => Promise<string[]>;
-        get: <T>(key: string) => Promise<T | undefined>;
-        set: <T>(key: string, value: T) => Promise<void>;
-        delete: (key: string) => Promise<void>;
-      };
-    };
-  }
-}
 
-const spark = window.spark;
 
 interface SystemSettingsProps {
   onBack: () => void;
@@ -77,8 +63,6 @@ interface SystemConfig {
   companyEmail: string;
   companyPhone: string;
   companyAddress: string;
-  businessLicense: string;
-  taxId: string;
   baseCurrency: string;
   defaultFeeRate: number;
   autoBackup: boolean;
@@ -96,6 +80,28 @@ interface SystemConfig {
   fontScale: number;
 }
 
+const initialConfig: SystemConfig = {
+  companyName: "",
+  companyEmail: "",
+  companyPhone: "",
+  companyAddress: "",
+  baseCurrency: "USD",
+  defaultFeeRate: 0,
+  autoBackup: true,
+  notificationSound: true,
+  emailNotifications: true,
+  smsNotifications: false,
+  pushNotifications: true,
+  transactionUpdates: true,
+  requireClientVerification: true,
+  sessionTimeout: 30,
+  printReceipts: true,
+  language: "en",
+  theme: "light",
+  sleepModeDelay: 10,
+  fontScale: 1.0,
+};
+
 const SystemSettings: React.FC<SystemSettingsProps> = ({
   onBack,
   systemConfig: propSystemConfig,
@@ -104,36 +110,35 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
   localData = {},
   onDataSynced,
 }) => {
+  const { restart } = useElectron();
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [isResettingData, setIsResettingData] = useState(false);
 
-  const [localSystemConfig, setLocalSystemConfig] = useKV<SystemConfig>(
-    "systemConfig",
-    {
-      companyName: "",
-      companyEmail: "",
-      companyPhone: "",
-      companyAddress: "",
-      businessLicense: "",
-      taxId: "",
-      baseCurrency: "USD",
-      defaultFeeRate: 0,
-      autoBackup: true,
-      notificationSound: true,
-      emailNotifications: true,
-      smsNotifications: false,
-      pushNotifications: true,
-      transactionUpdates: true,
-      requireClientVerification: true,
-      sessionTimeout: 30,
-      printReceipts: true,
-      language: "en",
-      theme: "light",
-      sleepModeDelay: 10,
-      fontScale: 1.0,
-    }
-  );
+  const [localSystemConfig, setLocalSystemConfig] = useState<SystemConfig>(initialConfig);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load config from Supabase on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('*')
+          .single();
+
+        if (data && !error) {
+          setLocalSystemConfig(data);
+        }
+      } catch {
+        // Use defaults if no data
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConfig();
+  }, []);
 
   // Use prop config if provided, otherwise use local config
   const effectiveConfig = (propSystemConfig ??
@@ -145,15 +150,27 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
     confirmPassword: "",
   });
 
-  const updateConfig = (newConfig: SystemConfig) => {
+  const updateConfig = async (newConfig: SystemConfig) => {
     if (propOnConfigUpdate) {
       propOnConfigUpdate(newConfig);
     } else {
       setLocalSystemConfig(newConfig);
+      // Save to Supabase
+      try {
+        const { error } = await supabase
+          .from('system_settings')
+          .upsert(newConfig);
+
+        if (error) {
+          console.error('Failed to save settings:', error);
+        }
+      } catch {
+        // Handle error silently
+      }
     }
   };
 
-  const handleConfigUpdate = <K extends keyof SystemConfig>(
+  const handleConfigUpdate = <K extends keyof SystemConfig,>(
     key: K,
     value: SystemConfig[K]
   ) => {
@@ -162,11 +179,6 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
     }
     const newConfig: SystemConfig = { ...effectiveConfig, [key]: value };
     updateConfig(newConfig);
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handlePasswordChange = (_field: string, _value: string) => {
-    // Implementation removed - unused function
   };
 
   const saveSettings = () => {
@@ -190,26 +202,6 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
     setShowPasswordFields(false);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const testSupabaseConnection = async () => {
-    // Implementation removed - unused function
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleProfilePictureUpload = (_event: React.ChangeEvent<HTMLInputElement>) => {
-    // Implementation removed - unused function
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const triggerProfileUpload = () => {
-    // Implementation removed - unused function
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const removeProfilePicture = () => {
-    // Implementation removed - unused function
-  };
-
   const resetToDefaults = async () => {
     setIsResettingData(true);
 
@@ -222,8 +214,6 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
         companyEmail: "",
         companyPhone: "",
         companyAddress: "",
-        businessLicense: "",
-        taxId: "",
         baseCurrency: "USD",
         defaultFeeRate: 0,
         autoBackup: true,
@@ -247,7 +237,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
 
       // Simulate app restart after 2 seconds
       setTimeout(() => {
-        window.location.reload();
+        restart();
       }, 2000);
     } catch {
       // Error handled silently
@@ -260,18 +250,6 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
     setIsClearingCache(true);
 
     try {
-      // Get all stored keys and clear them
-      const allKeys = await spark.kv.keys();
-
-      // Keep essential keys but clear data caches
-      const keysToKeep = ["systemConfig", "isAuthenticated", "currentUser"];
-      const keysToClear = allKeys.filter((key) => !keysToKeep.includes(key));
-
-      // Clear specific data keys
-      for (const key of keysToClear) {
-        await spark.kv.delete(key);
-      }
-
       // Clear browser caches if available
       if ("caches" in window) {
         const cacheNames = await caches.keys();
@@ -281,7 +259,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
       }
 
       toast.success("Cache cleared successfully");
-    } catch {
+    } catch (error) {
+      console.error("Failed to clear cache:", error);
       toast.error("Failed to clear cache");
     } finally {
       setIsClearingCache(false);
@@ -290,12 +269,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
 
   const exportSystemData = async () => {
     try {
-      const allKeys = await spark.kv.keys();
-      const systemData: Record<string, unknown> = {};
-
-      for (const key of allKeys) {
-        systemData[key] = await spark.kv.get(key);
-      }
+      const systemData = { ...effectiveConfig };
 
       const dataStr = JSON.stringify(systemData, null, 2);
       const dataBlob = new Blob([dataStr], { type: "application/json" });
@@ -467,17 +441,18 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
                 </label>
                 <Input
                   type="number"
-                  placeholder="Enter fee rate"
+                  placeholder="Enter fee rate (0-10%)"
                   value={effectiveConfig.defaultFeeRate}
                   onChange={(e) =>
                     handleConfigUpdate(
                       "defaultFeeRate",
-                      parseFloat(e.target.value) || 0
+                      Math.min(10, Math.max(0, parseFloat(e.target.value) || 0))
                     )
                   }
                   className="h-10"
                   step="0.1"
                   min="0"
+                  max="10"
                 />
               </div>
 
@@ -758,7 +733,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.location.reload()}
+                onClick={() => restart()}
                 className="w-full justify-start"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />

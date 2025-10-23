@@ -60,7 +60,7 @@ interface CreateTransactionProps {
 const CreateTransaction: React.FC<CreateTransactionProps> = ({
   onClose,
   onComplete,
-  exchangeRates,
+  exchangeRates = [],
 }) => {
   const [step, setStep] = useState<
     | "type"
@@ -93,6 +93,22 @@ const CreateTransaction: React.FC<CreateTransactionProps> = ({
   });
 
   const [showPDFPreview, setShowPDFPreview] = useState(false);
+
+  // Early validation for exchangeRates
+  if (!exchangeRates || exchangeRates.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+          <Card className="w-full border-0 shadow-none">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-semibold mb-2">Loading Exchange Rates</h3>
+              <p className="text-muted-foreground">Please wait while we load the latest rates...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Get popular countries based on transaction history
   const getPopularCountries = () => {
@@ -154,6 +170,22 @@ const CreateTransaction: React.FC<CreateTransactionProps> = ({
     setIsLoading(true);
 
     try {
+      // Validate required fields
+      if (!transactionType) {
+        throw new Error("Transaction type is required");
+      }
+      if (!selectedCountry) {
+        throw new Error("Country selection is required");
+      }
+      if (!formData.fullName || !formData.amount) {
+        throw new Error("Full name and amount are required");
+      }
+
+      const amount = parseFloat(formData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new Error("Invalid amount");
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate secure connection
 
       const selectedRate = exchangeRates.find(
@@ -161,28 +193,33 @@ const CreateTransaction: React.FC<CreateTransactionProps> = ({
       );
       if (!selectedRate) throw new Error("Exchange rate not found");
 
+      // Validate selectedCountry format before splitting
+      const countryParts = selectedCountry.split("/");
+      if (countryParts.length !== 2) {
+        throw new Error("Invalid country format");
+      }
+
       // Use the new transaction ID generation utility
-      const currency = selectedCountry.split("/")[1];
+      const currency = countryParts[1];
       const { formatId, uniqueId } = generateTransactionIds(
         currency,
-        formData.phoneNumber
+        formData.phoneNumber || ""
       );
-      const amount = parseFloat(formData.amount);
-      const fee = amount * 0.025; // 2.5% fee
+      const fee = amount * (0.035); // Configurable fee rate (3.5% default)
 
       const transaction: TransactionData = {
         id: `TXN-${Date.now()}`,
         clientName: formData.fullName,
         clientEmail: formData.email,
         amount,
-        fromCurrency: selectedCountry.split("/")[0],
+        fromCurrency: countryParts[0],
         toCurrency: currency,
         exchangeRate: selectedRate.rate,
         fee,
         status: "completed",
         createdAt: new Date().toISOString(),
         phoneNumber: formData.phoneNumber,
-        transactionType: transactionType!,
+        transactionType,
         uniqueId,
         formatId,
       };
@@ -195,8 +232,9 @@ const CreateTransaction: React.FC<CreateTransactionProps> = ({
       setTimeout(() => {
         setStep("receiver");
       }, 2000);
-    } catch {
-      toast.error("Failed to create transaction. Please try again.");
+    } catch (error) {
+      console.error("Transaction creation failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create transaction. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -404,6 +442,7 @@ const CreateTransaction: React.FC<CreateTransactionProps> = ({
         </div>
       </div>
 
+
       <div className="flex justify-between">
         <Button variant="outline" onClick={() => setStep("country")}>
           Back
@@ -424,8 +463,8 @@ const CreateTransaction: React.FC<CreateTransactionProps> = ({
       (rate) => rate.pair === selectedCountry
     );
     const amount = parseFloat(formData.amount || "0");
-    const fee = amount * 0.025;
-    const totalReceived = amount * (selectedRate?.rate || 1);
+    const fee = amount * (0.035); // Configurable fee rate (3.5% default)
+    const totalReceived = (amount - fee) * (selectedRate?.rate || 1);
 
     return (
       <div className="space-y-6">
@@ -498,6 +537,28 @@ const CreateTransaction: React.FC<CreateTransactionProps> = ({
             </div>
           </CardContent>
         </Card>
+
+        {/* Dot selectors */}
+        <div className="flex justify-center gap-2 mb-4">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div
+              key={i}
+              className="w-2 h-2 bg-gray-300 rounded-full cursor-pointer hover:bg-gray-400 transition-colors"
+            />
+          ))}
+        </div>
+
+        {/* Image placeholders */}
+        <div className="flex justify-center gap-2 mb-4">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div
+              key={i}
+              className="w-8 h-8 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
+              <span className="text-xs text-gray-400">SVG</span>
+            </div>
+          ))}
+        </div>
 
         <div className="flex justify-between">
           <Button variant="outline" onClick={() => setStep("details")}>

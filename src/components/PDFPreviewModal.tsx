@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, X } from '@phosphor-icons/react';
 import html2pdf from 'html2pdf.js';
+import { getCurrencySymbol } from '@/lib/utils';
 
 interface PDFPreviewModalProps {
   isOpen: boolean;
@@ -27,13 +28,28 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
   isOpen,
   onClose,
   transaction,
-  isReceiver = false
+  isReceiver: _isReceiver = false
 }) => {
   const pdfRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   if (!isOpen) return null;
 
+  // Prevent crashes if the modal is open but the transaction data isn't ready.
+  if (!transaction) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <h2 className="text-xl font-semibold text-center">
+            Loading Transaction...
+          </h2>
+          <p className="text-gray-600 text-center mt-2">
+            Please wait while the details are being prepared.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const generatePDF = async () => {
     if (!pdfRef.current) return;
 
@@ -56,6 +72,11 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
   };
 
   const totalReceived = transaction.amount * transaction.exchangeRate;
+  const now = new Date();
+  const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const fullDate = now.toLocaleDateString();
+  const time = now.toTimeString().split(' ')[0];
+  const feePercentage = ((transaction.fee / transaction.amount) * 100).toFixed(2);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -85,10 +106,14 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           <div
             ref={pdfRef}
-            className="bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-2xl shadow-inner border border-gray-200"
+            className="p-8 rounded-2xl shadow-inner border border-gray-200"
             style={{
               fontFamily: 'system-ui, -apple-system, sans-serif',
-              minHeight: '600px'
+              minHeight: '600px',
+              backgroundImage: 'url(/assets/Background.jpg)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
             }}
           >
             {/* Header */}
@@ -107,35 +132,49 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
 
             {/* Main Content */}
             <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-6">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  {isReceiver
-                    ? `You just received money from ${transaction.countryName} ${transaction.countryFlag}`
-                    : `You just sent money to ${transaction.countryName} ${transaction.countryFlag}`
-                  }
-                </h2>
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <p className="text-blue-800 font-semibold">
-                    Exchange Rate: 1 {transaction.fromCurrency} = {transaction.exchangeRate.toFixed(4)} {transaction.toCurrency}
-                  </p>
-                </div>
+              {/* Greeting */}
+              <div className="text-center mb-6">
+                <h1 className="text-4xl font-bold text-gray-800">Hi, {transaction.clientName}</h1>
               </div>
 
-              <div className="flex justify-center mb-8">
-                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
-                  <div className="text-sm text-gray-600 mb-2">Amount Sent</div>
-                  <div className="text-2xl font-bold text-gray-800">
-                    ${transaction.amount.toFixed(2)} {transaction.fromCurrency}
-                  </div>
-                </div>
+              {/* Thank you message */}
+              <div className="text-center mb-6">
+                <p className="italic text-lg text-gray-700">
+                  Thank you for trusting <span className="font-bold italic">RJB Tranz</span> for swift transactions and superior rate.
+                </p>
               </div>
 
-              {/* Total Received */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-200 text-center">
-                <div className="text-lg font-semibold text-gray-800 mb-2">Total Received</div>
-                <div className="text-3xl font-bold text-green-600">
-                  {transaction.toCurrency} {totalReceived.toFixed(2)}
-                </div>
+              {/* Amount sent */}
+              <div className="text-center mb-6">
+                <h2 className="text-4xl font-bold text-gray-800">Amount sent: {getCurrencySymbol(transaction.fromCurrency)}{transaction.amount.toFixed(2)} {transaction.fromCurrency}</h2>
+                <p className="text-lg text-gray-600">Transaction Fee: {feePercentage}%</p>
+              </div>
+
+              {/* Exchange rate */}
+              <div className="text-center mb-6">
+                <p className="text-lg text-gray-700">
+                  Exchange Rate: 1 {transaction.fromCurrency} = {transaction.exchangeRate.toFixed(4)} {transaction.toCurrency}
+                </p>
+              </div>
+
+              {/* Unique code */}
+              <div className="text-center mb-6">
+                <p className="text-lg text-gray-700">Unique code: {transaction.uniqueId}</p>
+              </div>
+
+              {/* Destination */}
+              <div className="text-center mb-6">
+                <p className="text-lg text-gray-700">
+                  You just sent money to {transaction.countryName} {transaction.countryFlag}
+                </p>
+              </div>
+
+              {/* Date and Time */}
+              <div className="text-center">
+                <p className="text-lg text-gray-700">
+                  <strong>{day}</strong>, {fullDate}
+                </p>
+                <p className="text-lg text-gray-700">{time}</p>
               </div>
             </div>
 

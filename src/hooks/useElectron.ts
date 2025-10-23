@@ -28,6 +28,7 @@ interface ElectronAPI {
     options?: NotificationOptions
   ) => Notification;
   print: () => void;
+  restart: () => void;
 }
 
 declare global {
@@ -163,6 +164,14 @@ export function useElectron() {
     }
   };
 
+  const restart = () => {
+    if (window.electronAPI) {
+      window.electronAPI.restart();
+    } else {
+      window.location.reload();
+    }
+  };
+
   const registerMenuHandlers = (
     _handlers: Record<string, (...args: unknown[]) => void>
   ) => {
@@ -197,6 +206,7 @@ export function useElectron() {
     exportToFile,
     showNotification,
     print,
+    restart,
     registerMenuHandlers,
     registerThemeHandler,
     readFile,

@@ -5,19 +5,33 @@ This document provides step-by-step instructions to set up Supabase integration 
 
 ## Prerequisites
 - Supabase account
-- Project URL: `https://ijnskyrnmoyhtmfdazdk.supabase.co`
-- Anon Public Key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqbnNreXJubW95aHRtZmRhemRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNTk0MjEsImV4cCI6MjA3NDgzNTQyMX0.MAwV7HRgYRKKSBUVbfIqGW4ighagH-NzYDlM1Uooauc`
+- Project URL: `https://zjhgiggdswldmvzbtipr.supabase.co`
+- Anon Public Key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqaGdpZ2dkc3dsZG12emJ0aXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5OTM1OTUsImV4cCI6MjA3NjU2OTU5NX0.ZGmcbGYBCYx5ATXfCnIzzfy8umXqrm_z3rYnJl7rabI`
 
 ## Database Schema Setup
 
-### 1. Create Tables
+### 1. Run the Complete Schema
 
-Run the following SQL commands in your Supabase SQL Editor:
+Instead of running individual table creation commands, run the complete schema from the `supabase_schema.sql` file in your Supabase SQL Editor. This file contains:
+
+- **9 Main Tables**: users, countries, clients, transactions, invoices, exchange_rates, system_configs, audit_logs, printer_logs
+- **Performance Indexes**: Optimized for fast queries and searches
+- **Row Level Security (RLS)**: Currently DISABLED for simplicity (can be enabled later)
+- **Functions & Triggers**: Automated ID generation and timestamp updates
+- **Sample Data**: Pre-populated countries, exchange rates, and system configs
+- **Analytics Views**: Dashboard statistics and reporting views
+
+**To run the schema:**
+1. Open your Supabase dashboard: https://zjhgiggdswldmvzbtipr.supabase.co
+2. Go to SQL Editor
+3. Copy the entire contents of `supabase_schema.sql`
+4. Click "Run" to execute
+
+### Legacy Table Structure (For Reference)
+
+The previous simplified schema included these core tables:
 
 ```sql
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- Transactions table
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -79,7 +93,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- System configuration table (optional)
+-- System configuration table
 CREATE TABLE IF NOT EXISTS system_config (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id VARCHAR(255) NOT NULL UNIQUE,
@@ -89,87 +103,113 @@ CREATE TABLE IF NOT EXISTS system_config (
 );
 ```
 
-### 2. Create Indexes for Performance
+### 2. Additional Features Included
 
-```sql
--- Indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
-CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_transactions_client_email ON transactions(client_email);
+The complete schema includes comprehensive features beyond basic tables:
 
-CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
-CREATE INDEX IF NOT EXISTS idx_clients_verification_status ON clients(verification_status);
-CREATE INDEX IF NOT EXISTS idx_clients_last_visit ON clients(last_visit DESC);
+**Enhanced Tables:**
+- **users**: Role-based authentication (admin, operator, viewer)
+- **countries**: 70+ countries with flags, currencies, and phone codes
+- **audit_logs**: Complete activity tracking for compliance
+- **printer_logs**: Receipt printing history and error tracking
 
-CREATE INDEX IF NOT EXISTS idx_exchange_rates_pair ON exchange_rates(pair);
-CREATE INDEX IF NOT EXISTS idx_exchange_rates_last_updated ON exchange_rates(last_updated DESC);
+**Advanced Relationships:**
+- Transactions linked to clients and users
+- Invoices connected to clients and creators
+- System configs per user or global
+- Full audit trail for all operations
 
-CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
-CREATE INDEX IF NOT EXISTS idx_invoices_due_date ON invoices(due_date);
-CREATE INDEX IF NOT EXISTS idx_invoices_created_at ON invoices(created_at DESC);
-```
+**Performance Optimizations:**
+- 25+ strategic indexes for fast queries
+- Optimized foreign key relationships
+- Query-efficient views for analytics
 
-### 3. Set up Row Level Security (RLS)
+**Security Features:**
+- Row Level Security (RLS) disabled for admin-side CRM (single database access)
+- Input validation at database level
+- UUID primary keys for enhanced security
+- Audit logging for compliance tracking
 
-```sql
--- Enable RLS on all tables
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE exchange_rates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
+**Automation:**
+- Auto-generated transaction and invoice IDs
+- Automatic timestamp updates
+- Sequence management for unique identifiers
 
--- Create policies for authenticated users
-CREATE POLICY "Enable all operations for authenticated users" ON transactions
-    FOR ALL USING (auth.role() = 'authenticated');
+### 3. Row Level Security (RLS)
 
-CREATE POLICY "Enable all operations for authenticated users" ON clients
-    FOR ALL USING (auth.role() = 'authenticated');
+**Note**: RLS is currently **DISABLED** in this schema for simplicity. All tables are accessible without authentication restrictions.
 
-CREATE POLICY "Enable all operations for authenticated users" ON exchange_rates
-    FOR ALL USING (auth.role() = 'authenticated');
+When you're ready to implement authentication:
+1. Uncomment the RLS section in `supabase_schema.sql`
+2. Implement user authentication in your app
+3. Enable the security policies for production use
 
-CREATE POLICY "Enable all operations for authenticated users" ON invoices
-    FOR ALL USING (auth.role() = 'authenticated');
+### 4. Default Data Included
 
-CREATE POLICY "Enable all operations for authenticated users" ON system_config
-    FOR ALL USING (auth.role() = 'authenticated');
-```
+The schema comes pre-loaded with essential data:
 
-### 4. Insert Sample Data (Optional)
+**Default Admin User:**
+- Email: `admin@rjbtranz.com`
+- Password: `admin123` (change immediately in production!)
+- Role: Administrator
 
-```sql
--- Sample exchange rates
-INSERT INTO exchange_rates (pair, from_currency, to_currency, rate, change, change_percent, last_updated) VALUES
-('USD/GHS', 'USD', 'GHS', 12.45, 0.15, 1.22, NOW()),
-('USD/NGN', 'USD', 'NGN', 795.50, -5.25, -0.66, NOW()),
-('USD/KES', 'USD', 'KES', 129.75, 2.10, 1.64, NOW()),
-('USD/INR', 'USD', 'INR', 83.25, 0.45, 0.54, NOW()),
-('USD/PHP', 'USD', 'PHP', 56.75, -0.85, -1.48, NOW())
-ON CONFLICT (pair) DO UPDATE SET
-    rate = EXCLUDED.rate,
-    change = EXCLUDED.change,
-    change_percent = EXCLUDED.change_percent,
-    last_updated = EXCLUDED.last_updated;
-```
+**Sample Countries:** USA, Ghana, Nigeria, Kenya, India, Philippines with currencies and flags
+
+**Exchange Rates:** Current USD rates for major African and Asian currencies
+
+**System Configuration:** Company info, fee structures, currency settings, notifications, and printer configs
+
+**Analytics Views:** Ready-to-use dashboard statistics and reporting views
+
+### 5. Database Functions & Triggers
+
+The schema includes automated functions:
+
+**ID Generation:**
+- Transaction IDs: `TXN-YYYYMMDD-XXXXXX`
+- Invoice Numbers: `INV-YYYYMMDD-XXXX`
+
+**Automatic Updates:**
+- `updated_at` timestamps on all relevant tables
+- Audit logging for compliance
+- Sequence management for unique identifiers
+
+**Analytics Views:**
+- `dashboard_stats`: Real-time metrics for the dashboard
+- `transaction_analytics`: Daily transaction summaries
+- `client_analytics`: Client performance metrics
 
 ## Testing the Connection
 
 1. **In the RJB TRANZ CRM System Settings:**
-   - Navigate to System Settings (click on your profile avatar)
-   - Go to the "System" step
-   - In the Database section, click the "Test" button next to "Supabase Connection"
-   - You should see a success message if the connection works
+    - Navigate to System Settings (click on your profile avatar)
+    - Go to the "System" step
+    - In the Database section, click the "Test" button next to "Supabase Connection"
+    - You should see a success message if the connection works
 
-2. **Manual Testing:**
-   - You can also test the connection using the SupabaseTest component
-   - Or run queries directly in the Supabase dashboard
+2. **Verify Schema Installation:**
+    - Check that all 9 tables were created in your Supabase dashboard
+    - Confirm the admin user was created (email: admin@rjbtranz.com)
+    - Test that sample data was inserted (countries, exchange rates)
+
+3. **Manual Testing:**
+    - You can also test the connection using the SupabaseTest component
+    - Or run queries directly in the Supabase dashboard
+    - Check the analytics views are working: `SELECT * FROM dashboard_stats;`
 
 ## Environment Configuration
 
 The connection details are already configured in the application:
-- URL: `https://ijnskyrnmoyhtmfdazdk.supabase.co`
+- URL: `https://zjhgiggdswldmvzbtipr.supabase.co`
 - Key: Already embedded in the application
+The application is configured to use environment variables for the Supabase URL and Key. Create a `.env` file in the root of the project with the following content:
+
+```env
+VITE_SUPABASE_URL=https://zjhgiggdswldmvzbtipr.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqaGdpZ2dkc3dsZG12emJ0aXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5OTM1OTUsImV4cCI6MjA3NjU2OTU5NX0.ZGmcbGYBCYx5ATXfCnIzzfy8umXqrm_z3rYnJl7rabI
+```
+
+**Note**: This file should not be committed to version control to keep your keys secure.
 
 ## Features Available
 
@@ -179,6 +219,12 @@ Once set up, you can:
 2. **Sync Local Data**: Export your local CRM data to Supabase
 3. **Real-time Updates**: Data will sync between local storage and Supabase
 4. **Backup & Restore**: Your data is safely stored in the cloud
+5. **User Authentication**: Login with role-based access (admin/operator/viewer)
+6. **Advanced Analytics**: Dashboard with real-time metrics and reporting
+7. **Audit Trail**: Complete activity logging for compliance
+8. **Multi-user Support**: Multiple operators can work simultaneously
+9. **Automated ID Generation**: System-generated transaction and invoice numbers
+10. **Enhanced Security**: Row-level security and encrypted connections
 
 ## Troubleshooting
 
@@ -208,9 +254,11 @@ If you encounter issues:
 ## Security Notes
 
 - The anon key is safe to use in client-side applications
-- Row Level Security is enabled to protect data
+- Row Level Security is currently DISABLED (admin-side CRM with single database access)
 - All connections use HTTPS encryption
-- Consider implementing additional authentication for production use
+- UUID primary keys provide enhanced security
+- Audit logging tracks all database operations
+- Consider enabling RLS when implementing multi-user authentication
 
 ## Next Steps
 

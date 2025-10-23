@@ -51,9 +51,8 @@
     
     <!-- Service Worker Registration (disabled in dev, hardened guards) -->
     <script type="module">
-        // Determine environment via Vite or hostname check
-        const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
-        const isGitHubDev = window.location.hostname.includes('github.dev') ||
+        // Determine environment via hostname check for sandboxed environments
+        const isSandboxed = window.location.hostname.includes('github.dev') ||
                            window.location.hostname.includes('app.github.dev') ||
                            window.location.hostname.includes('csb.app') ||
                            window.location.hostname.includes('codesandbox.io') ||
@@ -62,16 +61,14 @@
                            window.location.hostname.includes('glitch.com') ||
                            window.location.hostname.endsWith('.github.dev');
 
-        // Remove manifest link in GitHub Codespaces to avoid CORS issues
-        if (isGitHubDev) {
+        // Remove manifest link in sandboxed environments to avoid CORS issues
+        if (isSandboxed) {
             const manifestLink = document.getElementById('manifest-link');
-            if (manifestLink) {
-                manifestLink.remove();
-            }
+            if (manifestLink) manifestLink.remove();
         }
 
-        // Register Service Worker for PWA functionality only in production, not in GitHub Codespaces, and not in file:// (Electron)
-        if (!isDev && !isGitHubDev && window.location.protocol !== 'file:' && 'serviceWorker' in navigator) {
+        // Register Service Worker for PWA functionality, excluding Electron's file protocol
+        if (!isSandboxed && window.location.protocol !== 'file:' && 'serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
                     const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
@@ -102,55 +99,6 @@
                     console.error('SW registration failed:', error);
                 }
             });
-        } else if (isDev || isGitHubDev) {
-            console.log('SW registration skipped in development/GitHub Codespaces environment');
-
-            // In development (incl. Codespaces), actively unregister any existing SW IMMEDIATELY
-            if ('serviceWorker' in navigator) {
-                // Multiple aggressive unregistration strategies
-                const unregisterAll = async () => {
-                    try {
-                        // 1. Get all registrations
-                        const regs = await navigator.serviceWorker.getRegistrations();
-                        console.log('Found', regs.length, 'service worker(s) to unregister');
-
-                        // 2. Unregister each one
-                        for (const reg of regs) {
-                            console.log('Unregistering Service Worker:', reg.scope);
-                            try {
-                                const success = await reg.unregister();
-                                console.log('SW unregistered:', success, 'for scope:', reg.scope);
-                            } catch (e) {
-                                console.warn('Failed to unregister SW:', e);
-                            }
-                        }
-
-                        // 3. Clear any active controller
-                        if (navigator.serviceWorker.controller) {
-                            console.log('Active SW controller found - sending SKIP_WAITING');
-                            navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-                        }
-
-                        // 4. Force reload if we still have a controller after unregistration
-                        setTimeout(() => {
-                            if (navigator.serviceWorker.controller) {
-                                console.log('Service worker still active after unregistration, forcing page reload');
-                                window.location.reload();
-                            }
-                        }, 100);
-
-                    } catch (e) {
-                        console.warn('Error during SW unregister in dev:', e);
-                    }
-                };
-
-                // Run unregistration immediately
-                unregisterAll();
-
-                // Also run again after a short delay to catch any race conditions
-                setTimeout(unregisterAll, 500);
-                setTimeout(unregisterAll, 1000);
-            }
         }
 
         // Handle app installation prompt
@@ -169,11 +117,8 @@
 
         // Handle app updates - avoid reload loops in dev
         window.addEventListener('controllerchange', () => {
-            console.log('Service worker controller changed');
-            if (!isDev && !isGitHubDev) {
-                console.log('Reloading to activate updated service worker');
-                window.location.reload();
-            }
+            console.log('Service worker controller changed. Reloading to activate updated service worker.'); 
+            window.location.reload();
         });
 
         // Handle offline/online status with safe guards
